@@ -263,6 +263,60 @@ export async function getTrendData(startDate, timeZone = 'UTC') {
 }
 
 /**
+ * Returns every case from the last `days` calendar days (in `timeZone`),
+ * using the exact same filter as getTrendData (Incident, Sev 1 or 2,
+ * Impact >= 50%) so the history list always reconciles with the trend
+ * chart's totals. Newest first.
+ */
+export async function getTicketHistory(days, timeZone = 'UTC') {
+  const bucketMap = await getProductLineBucketMap();
+  const now = new Date();
+  const startDay = dayKeyInZone(new Date(now.getTime() - days * 86400000), timeZone);
+  const dayStart = zonedMidnightUtc(startDay, timeZone);
+
+  const soql =
+    "SELECT Id, CaseNumber, Subject, Highest_Severity__c, Product_Type__c, " +
+    "Impact_Percentage__c, CreatedDate, End_Time_of_Incident__c, Account.Name " +
+    "FROM Case " +
+    "WHERE Type = 'Incident' " +
+    "AND Highest_Severity__c IN ('Severity 1','Severity 2') " +
+    "AND Impact_Percentage__c >= 50 " +
+    "AND CreatedDate >= " + dayStart.toISOString().replace(/\.\d{3}/, "") + " " +
+    "ORDER BY CreatedDate DESC";
+
+  let records = [];
+  let nextPath = `/services/data/${SF_API_VERSION}/query?q=${encodeURIComponent(soql)}`;
+  while (nextPath) {
+    const result = await sfFetch(nextPath);
+    records.push(...(result.records || []));
+    nextPath = result.done ? null : (result.nextRecordsUrl || null);
+  }
+
+  const cases = records
+    .map((r) => ({
+      id: r.Id,
+      caseNumber: r.CaseNumber,
+      subject: r.Subject,
+      severity: r.Highest_Severity__c,
+      productType: r.Product_Type__c,
+      impact: r.Impact_Percentage__c,
+      accountName: r.Account?.Name || null,
+      createdDate: r.CreatedDate,
+      endTime: r.End_Time_of_Incident__c || null,
+      resolutionMs: r.End_Time_of_Incident__c
+        ? new Date(r.End_Time_of_Incident__c) - new Date(r.CreatedDate)
+        : null,
+      day: dayKeyInZone(new Date(r.CreatedDate), timeZone),
+      service: classifyProductType(r.Product_Type__c, bucketMap),
+      url: `${SF_INSTANCE_URL}/lightning/r/Case/${r.Id}/view`,
+    }))
+    .filter((c) => c.service);
+
+  console.log(`[salesforce] getTicketHistory: ${cases.length} case(s) from ${startDay} (tz=${timeZone})`);
+  return cases;
+}
+
+/**
  * Returns the individual cases behind one day's trend-chart totals, using
  * the exact same filter as getTrendData (Incident, Sev 1 or 2, Impact >= 50%)
  * so the drill-down list always reconciles with the number shown on the chart.

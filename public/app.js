@@ -88,6 +88,8 @@ function initTimezoneSelect() {
     // so switching zones needs a re-fetch, not just a re-format.
     if (typeof loadTrend === 'function' && typeof currentTrendRange !== 'undefined') loadTrend(currentTrendRange);
     if (typeof refreshOpenTrendModal === 'function') refreshOpenTrendModal();
+    // History day-buckets are computed server-side in the selected timezone too.
+    if (typeof loadHistory === 'function') loadHistory();
   });
 
   updateTzClock();
@@ -748,3 +750,144 @@ async function openTrendDetailModal(dayEntry, service) {
     trendModalBody.innerHTML = `<div class="trend-modal-empty">Could not load cases: ${err.message}</div>`;
   }
 }
+
+// ============================================================
+// 7 Day History of Tickets — same filter as the trend chart
+// (Sev 1+2, Impact >= 50%, Incidents only), grouped by calendar
+// day in the selected timezone.
+// ============================================================
+
+const HISTORY_DAYS = 3;
+
+function dayKeyInZoneClient(date, timeZone) {
+  const parts = Object.fromEntries(
+    new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" })
+      .formatToParts(date).map((p) => [p.type, p.value])
+  );
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function historyDayLabel(dayKey) {
+  const tz = getSelectedTimezone();
+  const today = dayKeyInZoneClient(new Date(), tz);
+  const yesterday = dayKeyInZoneClient(new Date(Date.now() - 86400000), tz);
+  if (dayKey === today) return "Today";
+  if (dayKey === yesterday) return "Yesterday";
+  return new Date(dayKey + "T00:00:00Z").toLocaleDateString("en-GB", {
+    weekday: "short", day: "numeric", month: "short", timeZone: "UTC",
+  });
+}
+
+function formatResolutionDuration(ms) {
+  if (ms == null || ms < 0) return null;
+  const totalMinutes = Math.round(ms / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  const parts = [];
+  if (days) parts.push(`${days}d`);
+  if (days || hours) parts.push(`${hours}h`);
+  parts.push(`${minutes}m`);
+  return parts.join(" ");
+}
+
+function historyRow(c) {
+  const tr = document.createElement("tr");
+
+  const dateTd = document.createElement("td");
+  dateTd.classList.add("col-mono");
+  const time = c.createdDate
+    ? new Date(c.createdDate).toLocaleTimeString("en-GB", {
+        hour: "2-digit", minute: "2-digit", timeZone: getSelectedTimezone(),
+      })
+    : "–";
+  dateTd.textContent = c.day ? `${historyDayLabel(c.day)}, ${time}` : "–";
+  tr.appendChild(dateTd);
+
+  const caseTd = document.createElement("td");
+  caseTd.classList.add("case-number");
+  const link = document.createElement("a");
+  link.className = "case-number-link";
+  link.href = c.url;
+  link.target = "_blank";
+  link.rel = "noopener noreferrer";
+  link.textContent = c.caseNumber;
+  caseTd.appendChild(link);
+  tr.appendChild(caseTd);
+
+  const accountTd = document.createElement("td");
+  if (!c.accountName) accountTd.classList.add("cell-muted");
+  accountTd.textContent = c.accountName || "–";
+  tr.appendChild(accountTd);
+
+  const subjectTd = document.createElement("td");
+  subjectTd.textContent = c.subject || "(no subject)";
+  tr.appendChild(subjectTd);
+
+  const serviceTd = document.createElement("td");
+  const pill = document.createElement("span");
+  pill.className = "category-pill";
+  pill.style.setProperty("--cat-color", SERVICE_COLOR[c.service]);
+  pill.textContent = SERVICE_LABEL[c.service];
+  serviceTd.appendChild(pill);
+  tr.appendChild(serviceTd);
+
+  const sevTd = document.createElement("td");
+  sevTd.textContent = c.severity || "–";
+  tr.appendChild(sevTd);
+
+  const impactTd = document.createElement("td");
+  impactTd.classList.add("col-mono");
+  impactTd.textContent = c.impact != null ? `${c.impact}%` : "–";
+  tr.appendChild(impactTd);
+
+  const resolutionTd = document.createElement("td");
+  resolutionTd.classList.add("col-mono");
+  const resolution = formatResolutionDuration(c.resolutionMs);
+  if (resolution) {
+    resolutionTd.textContent = resolution;
+  } else {
+    resolutionTd.classList.add("cell-muted");
+    resolutionTd.textContent = "Open";
+  }
+  tr.appendChild(resolutionTd);
+
+  return tr;
+}
+
+function renderHistoryTable(cases) {
+  const body = document.getElementById("historyBody");
+  const empty = document.getElementById("historyEmpty");
+  const table = document.getElementById("historyTable");
+  const count = document.getElementById("historyCount");
+
+  body.innerHTML = "";
+  cases.forEach((c) => body.appendChild(historyRow(c)));
+
+  count.textContent = `${cases.length} ticket${cases.length === 1 ? "" : "s"}`;
+  const isEmpty = cases.length === 0;
+  table.hidden = isEmpty;
+  empty.hidden = !isEmpty;
+}
+
+async function loadHistory() {
+  const body = document.getElementById("historyBody");
+  const empty = document.getElementById("historyEmpty");
+  const table = document.getElementById("historyTable");
+
+  try {
+    const res = await fetch(
+      `/api/trend/history?days=${HISTORY_DAYS}&tz=${encodeURIComponent(getSelectedTimezone())}`,
+      { cache: "no-store" }
+    );
+    const json = await res.json();
+    if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+    renderHistoryTable(json.cases || []);
+  } catch (err) {
+    body.innerHTML = `<tr><td colspan="8" class="cell-muted">Could not load history: ${err.message}</td></tr>`;
+    table.hidden = false;
+    empty.hidden = true;
+  }
+}
+
+loadHistory();

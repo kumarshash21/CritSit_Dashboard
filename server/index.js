@@ -2,7 +2,7 @@ import 'dotenv/config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
-import { getCaseListView, getTrendData, getTrendDayDetail } from './salesforce.js';
+import { getCaseListView, getTicketHistory, getTrendData, getTrendDayDetail } from './salesforce.js';
 import { dayKeyInZone, isValidTimeZone, zonedMidnightUtc } from './tz.js';
 
 function resolveTimeZone(tz) {
@@ -74,6 +74,18 @@ app.get('/api/trend/detail', async (req, res) => {
     const timeZone = resolveTimeZone(req.query.tz);
     const cases = await getTrendDayDetail(date, timeZone);
     res.json({ date, cases });
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+app.get('/api/trend/history', async (req, res) => {
+  try {
+    const days = Number(req.query.days) || 7;
+    const timeZone = resolveTimeZone(req.query.tz);
+    const cases = await getTicketHistory(days, timeZone);
+    res.json({ days, cases });
   } catch (err) {
     console.error(err);
     res.status(502).json({ error: err.message });

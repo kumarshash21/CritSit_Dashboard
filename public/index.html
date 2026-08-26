@@ -258,6 +258,41 @@
         </div>
       </div>
     </section>
+
+    <!-- 7 Day History of Tickets -->
+    <section class="cases-section" aria-label="3 day ticket history">
+      <div class="cases-header">
+        <span class="cases-icon" aria-hidden="true">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+            <circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.6"/>
+            <path d="M12 7.5V12l3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </span>
+        <h2>3 Day History of Tickets</h2>
+        <span id="historyCount" class="cases-count"></span>
+      </div>
+      <div class="table-scroll">
+        <table id="historyTable">
+          <thead>
+            <tr>
+              <th>Created</th>
+              <th>Case</th>
+              <th>Account</th>
+              <th>Subject</th>
+              <th>Service</th>
+              <th>Severity</th>
+              <th>Impact</th>
+              <th>Resolution Time</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+      <div id="historyEmpty" class="cases-empty" hidden>
+        <p class="cases-empty-headline">No Tickets in the Last 3 Days</p>
+        <p class="cases-empty-sub">Nothing matching Sev 1/2 &amp; Impact &geq;50% in this window.</p>
+      </div>
+    </section>
   </main>
 
   <div id="trendDetailModal" class="trend-modal" hidden>
