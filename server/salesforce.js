@@ -222,6 +222,51 @@ export async function getCaseListView(devNameOrId) {
   return { columns, rows: finalRows, size: finalRows.length };
 }
 
+// Fields pulled for the Software Stability page's TEO KPI computation,
+// ported from app_v2.py's SF_CASE_FIELDS (L906-917).
+const TEO_CASE_FIELDS = [
+  'Id', 'CaseNumber', 'Subject', 'Type', 'Status', 'IsClosed', 'IsEscalated',
+  'CreatedDate', 'ClosedDate',
+  'Jira_Ticket_Id__c', 'Jira_Ticket_URL__c', 'Jira_Severity__c',
+  'Jira_Project__c', 'GM_Team__c', 'GM_Origins__c', 'Product_Type__c',
+  'Account_Name__c', 'First_Response_Time__c',
+  'Category__c', 'SLA_Category__c',
+];
+const TEO_CASE_TYPES = ['Incident'];
+const TEO_PRODUCT_TYPES = ['RTP', 'TTP'];
+const TEO_CASE_CATEGORY = 'Software';
+
+/**
+ * Fetch SF cases created within [startDate, endDate] (YYYY-MM-DD, IST-aligned
+ * bounds) for the TEO KPI pipeline in server/teoKpi.js. Defaults to the
+ * documented scope (Incident, RTP/TTP) — mirrors app_v2.py's fetch_sf_cases —
+ * but the Software Stability page's Ticket Category / Product Type filter
+ * chips can override either list to widen or narrow it.
+ */
+export async function getTeoCases(startDate, endDate, { types = TEO_CASE_TYPES, products = TEO_PRODUCT_TYPES } = {}) {
+  const fieldsClause = TEO_CASE_FIELDS.join(', ');
+  const typesClause = types.map((t) => `'${t}'`).join(', ');
+  const productsClause = products.map((p) => `'${p}'`).join(', ');
+  const soql =
+    `SELECT ${fieldsClause} FROM Case ` +
+    `WHERE CreatedDate >= ${startDate}T00:00:00+05:30 ` +
+    `AND CreatedDate <= ${endDate}T23:59:59+05:30 ` +
+    `AND Type IN (${typesClause}) ` +
+    `AND Product_Type__c IN (${productsClause}) ` +
+    `AND Category__c = '${TEO_CASE_CATEGORY}'`;
+
+  let records = [];
+  let nextPath = `/services/data/${SF_API_VERSION}/query?q=${encodeURIComponent(soql)}`;
+  while (nextPath) {
+    const result = await sfFetch(nextPath);
+    records.push(...(result.records || []));
+    nextPath = result.done ? null : (result.nextRecordsUrl || null);
+  }
+
+  console.log(`[salesforce] getTeoCases: ${records.length} case(s) from ${startDate} to ${endDate}`);
+  return records;
+}
+
 export async function getTrendData(startDate, timeZone = 'UTC') {
   const bucketMap = await getProductLineBucketMap();
 

@@ -1,0 +1,1569 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Software Stability &middot; CritSit Dashboard</title>
+  <link rel="icon" type="image/jpeg" href="go-logo.jpg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-decor" aria-hidden="true">
+    <span class="blob blob-a"></span>
+    <span class="blob blob-b"></span>
+    <span class="blob blob-c"></span>
+    <span class="bg-grid"></span>
+    <span class="bg-vignette"></span>
+  </div>
+
+  <header class="topbar">
+    <div class="topbar-title">
+      <span class="brand-mark">
+        <img src="go-logo.jpg" alt="" width="34" height="34" />
+      </span>
+      <div class="title-block">
+        <h1>CritSit Dashboard</h1>
+        <span class="subtitle">GreyOrange Service &middot; Live Operations</span>
+      </div>
+    </div>
+    <nav class="page-nav" aria-label="Primary">
+      <a href="index.html" class="page-nav-link">Home</a>
+      <a href="software-stability.html" class="page-nav-link is-active">Software Stability</a>
+    </nav>
+    <div class="topbar-meta">
+      <span class="env-pill">
+        <span class="env-dot" aria-hidden="true"></span>
+        Production
+      </span>
+    </div>
+  </header>
+
+  <main class="shell">
+    <section class="filter-bar" aria-label="Software stability filters">
+      <div class="filter-toolbar">
+        <div class="filter-toolbar-status">
+          <span class="filter-toolbar-title">Filters</span>
+          <span class="filter-active-badge" id="filterActiveBadge" hidden>
+            <span id="filterActiveCount">0</span> active
+          </span>
+          <span class="filter-toolbar-hint" id="filterToolbarHint">Showing all severities, products and PODs</span>
+        </div>
+        <button type="button" class="filter-clear-all" id="filterClearAll" disabled>Clear all</button>
+      </div>
+
+      <div class="filter-group filter-group--week">
+        <div class="filter-group-label">Select Week</div>
+        <div class="filter-group-body">
+          <select id="filterWeek" class="filter-select">
+            <option value="">Latest week</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="filter-group filter-group--month">
+        <div class="filter-group-label">KPI Month</div>
+        <div class="filter-group-body">
+          <select id="filterMonth" class="filter-select"></select>
+        </div>
+      </div>
+
+      <div class="filter-group filter-group--site">
+        <div class="filter-group-label">Site</div>
+        <div class="filter-group-body">
+          <select id="filterSite" class="filter-select">
+            <option value="">All</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="filter-group filter-group--severity" data-filter-key="severity">
+        <div class="filter-group-label">
+          <span>Severity</span>
+          <span class="filter-group-status" data-status-for="severity">All</span>
+        </div>
+        <div class="filter-group-body filter-chip-row">
+          <button type="button" class="filter-chip" data-value="1" title="Click to filter to this severity">Severity 1</button>
+          <button type="button" class="filter-chip" data-value="2" title="Click to filter to this severity">Severity 2</button>
+          <button type="button" class="filter-chip" data-value="3" title="Click to filter to this severity">Severity 3</button>
+          <button type="button" class="filter-chip" data-value="4" title="Click to filter to this severity">Severity 4</button>
+        </div>
+      </div>
+
+      <div class="filter-group filter-group--product" data-filter-key="product">
+        <div class="filter-group-label">
+          <span>Product Type</span>
+          <span class="filter-group-status" data-status-for="product">All</span>
+        </div>
+        <div class="filter-group-body filter-chip-row">
+          <button type="button" class="filter-chip" data-value="case-pick" title="Click to filter to this product">Case Pick</button>
+          <button type="button" class="filter-chip" data-value="ra" title="Click to filter to this product">RA</button>
+          <button type="button" class="filter-chip" data-value="relay" title="Click to filter to this product">Relay</button>
+          <button type="button" class="filter-chip" data-value="ril" title="Click to filter to this product">RIL</button>
+          <button type="button" class="filter-chip" data-value="rms" title="Click to filter to this product">RMS</button>
+          <button type="button" class="filter-chip" data-value="rtp" title="Click to filter to this product">RTP</button>
+          <button type="button" class="filter-chip" data-value="shuttle" title="Click to filter to this product">Shuttle</button>
+          <button type="button" class="filter-chip" data-value="ttp" title="Click to filter to this product">TTP</button>
+        </div>
+      </div>
+
+      <div class="filter-group filter-group--account" data-filter-key="account">
+        <div class="filter-group-label">
+          <span>POD</span>
+          <span class="filter-group-status" data-status-for="account">All</span>
+        </div>
+        <div class="filter-group-body filter-chip-row" id="filterPodRow">
+          <span class="filter-toolbar-hint" id="filterPodEmpty" hidden>No pod list configured</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="uptime-section" aria-label="Software uptime data">
+      <div class="uptime-header">
+        <h2 class="uptime-title">Software Uptime Data</h2>
+        <p class="uptime-sub">Site-level uptime status for the selected week &middot; &gt;99.8% flags green, &gt;99.4&ndash;99.8% flags yellow, &le;99.4% flags red</p>
+      </div>
+
+      <div class="uptime-body">
+        <div class="uptime-chart-col">
+          <div class="uptime-overall-box">
+            <span class="uptime-overall-label">Overall Uptime</span>
+            <span class="uptime-overall-value" id="uptimeOverallValue">0%</span>
+          </div>
+
+          <div class="uptime-chart-box">
+            <div class="uptime-pie" id="uptimePie">
+              <div class="uptime-pie-center">
+                <span class="uptime-pie-value" id="uptimePieTotal">6</span>
+                <span class="uptime-pie-caption">Sites</span>
+              </div>
+            </div>
+            <ul class="uptime-pie-legend" id="uptimeLegend">
+              <li data-status="red"><span class="legend-dot" style="--dot-color: var(--danger)"></span>Red<span class="legend-count" id="uptimeCountRed">0</span></li>
+              <li data-status="yellow"><span class="legend-dot" style="--dot-color: var(--warning)"></span>Yellow<span class="legend-count" id="uptimeCountYellow">0</span></li>
+              <li data-status="green"><span class="legend-dot" style="--dot-color: var(--primary)"></span>Green<span class="legend-count" id="uptimeCountGreen">0</span></li>
+            </ul>
+            <p class="uptime-hint">Click a slice or legend color to isolate it</p>
+            <button type="button" class="chart-reset-btn" id="uptimeResetBtn">Reset</button>
+            <div class="uptime-filter-badge" id="uptimeFilterBadge" hidden>
+              <span id="uptimeFilterLabel">Red only</span>
+              <button type="button" id="uptimeFilterClear" aria-label="Clear filter">&times;</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="uptime-lists">
+          <div class="uptime-group">
+            <ul class="uptime-group-list" id="uptimeList"></ul>
+            <button type="button" class="list-view-more-btn" id="uptimeViewMoreBtn" hidden></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="uptime-trend-box">
+        <div class="uptime-trend-head">
+          <h3 class="uptime-trend-title">Uptime % vs Site Status % Trend</h3>
+          <ul class="uptime-trend-legend">
+            <li><span class="legend-dot" style="--dot-color: var(--danger)"></span>Red</li>
+            <li><span class="legend-dot" style="--dot-color: var(--warning)"></span>Yellow</li>
+            <li><span class="legend-dot" style="--dot-color: var(--primary)"></span>Green</li>
+            <li><span class="legend-line" style="--dot-color: var(--secondary)"></span>Uptime % CXO</li>
+          </ul>
+        </div>
+        <div class="uptime-trend-chart" id="uptimeTrendChart"></div>
+      </div>
+    </section>
+
+    <section class="mtbf-section" aria-label="MTBF site distribution">
+      <div class="mtbf-header">
+        <h2 class="mtbf-title">MTBF: Site Distribution</h2>
+        <p class="mtbf-sub">Site-level mean time between failures for the selected week &middot; lower MTBF flags red, mid-range flags yellow, higher flags green</p>
+      </div>
+
+      <div class="mtbf-body">
+        <div class="mtbf-chart-col">
+          <div class="mtbf-overall-box">
+            <span class="mtbf-overall-label">Overall MTBF</span>
+            <span class="mtbf-overall-value" id="mtbfOverallValue">130h</span>
+          </div>
+
+          <div class="mtbf-chart-box">
+            <div class="mtbf-pie" id="mtbfPie">
+              <div class="mtbf-pie-center">
+                <span class="mtbf-pie-value" id="mtbfPieTotal">6</span>
+                <span class="mtbf-pie-caption">Sites</span>
+              </div>
+            </div>
+            <ul class="mtbf-pie-legend" id="mtbfLegend">
+              <li data-status="red"><span class="legend-dot" style="--dot-color: var(--danger)"></span>Red<span class="legend-count" id="mtbfCountRed">0</span></li>
+              <li data-status="yellow"><span class="legend-dot" style="--dot-color: var(--warning)"></span>Yellow<span class="legend-count" id="mtbfCountYellow">0</span></li>
+              <li data-status="green"><span class="legend-dot" style="--dot-color: var(--primary)"></span>Green<span class="legend-count" id="mtbfCountGreen">0</span></li>
+            </ul>
+            <p class="mtbf-hint">Click a slice or legend color to isolate it</p>
+            <button type="button" class="chart-reset-btn" id="mtbfResetBtn">Reset</button>
+            <div class="mtbf-filter-badge" id="mtbfFilterBadge" hidden>
+              <span id="mtbfFilterLabel">Red only</span>
+              <button type="button" id="mtbfFilterClear" aria-label="Clear filter">&times;</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="mtbf-lists">
+          <div class="mtbf-group">
+            <ul class="mtbf-group-list" id="mtbfList"></ul>
+            <button type="button" class="list-view-more-btn" id="mtbfViewMoreBtn" hidden></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="uptime-trend-box">
+        <div class="uptime-trend-head">
+          <h3 class="uptime-trend-title">MTBF vs Site Distribution % Trend</h3>
+          <ul class="uptime-trend-legend">
+            <li><span class="legend-dot" style="--dot-color: var(--danger)"></span>Red %</li>
+            <li><span class="legend-dot" style="--dot-color: var(--warning)"></span>Yellow %</li>
+            <li><span class="legend-dot" style="--dot-color: var(--primary)"></span>Green %</li>
+            <li><span class="legend-line" style="--dot-color: var(--secondary)"></span>MTBF</li>
+          </ul>
+        </div>
+        <div class="uptime-trend-chart" id="mtbfTrendChart"></div>
+      </div>
+    </section>
+
+    <section class="kpi-section" aria-label="KPI summary">
+      <div class="kpi-header">
+        <h2 class="kpi-title" id="kpiSummaryTitle"> </h2>
+        <p class="kpi-load-status" id="kpiLoadStatus">Loading live data&hellip;</p>
+      </div>
+
+      <div class="kpi-group">
+        <div class="kpi-group-title"><span aria-hidden="true">🎯</span> Ticket Flow</div>
+        <div class="kpi-cards">
+          <article class="kpi-card" style="--kpi-accent: var(--secondary)">
+            <div class="kpi-card-top">
+              <span class="kpi-card-icon" aria-hidden="true">🔗</span>
+              <span class="kpi-card-label">Ticket &rarr; GM</span>
+            </div>
+            <div class="kpi-card-value" id="kpiTicketGmValue">&mdash;</div>
+            <div class="kpi-card-sub" id="kpiTicketGmSub">&mdash;</div>
+            <button type="button" class="kpi-card-link" data-kpi="ticket-gm" aria-expanded="false" disabled>
+              <svg class="kpi-card-link-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="kpi-card-link-text" id="kpiTicketGmLinkText">View any-GM-link cases</span>
+            </button>
+          </article>
+
+          <article class="kpi-card" style="--kpi-accent: var(--primary)">
+            <div class="kpi-card-top">
+              <span class="kpi-card-icon" aria-hidden="true">🏷️</span>
+              <span class="kpi-card-label">Ticket &rarr; TEO</span>
+            </div>
+            <div class="kpi-card-value" id="kpiTicketTeoValue">&mdash;</div>
+            <div class="kpi-card-sub" id="kpiTicketTeoSub">&mdash;</div>
+            <div class="kpi-card-extra" id="kpiTicketTeoExtra">&mdash;</div>
+            <button type="button" class="kpi-card-link" data-kpi="ticket-teo" aria-expanded="false" disabled>
+              <svg class="kpi-card-link-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="kpi-card-link-text" id="kpiTicketTeoLinkText">View period-linked cases</span>
+            </button>
+          </article>
+
+          <article class="kpi-card" style="--kpi-accent: var(--accent-gstore)">
+            <div class="kpi-card-top">
+              <span class="kpi-card-icon" aria-hidden="true">✏️</span>
+              <span class="kpi-card-label">Ticket &rarr; QA</span>
+            </div>
+            <div class="kpi-card-value" id="kpiTicketQaValue">&mdash;</div>
+            <div class="kpi-card-sub" id="kpiTicketQaSub">&mdash;</div>
+            <div class="kpi-card-extra" id="kpiTicketQaExtra">&mdash;</div>
+            <button type="button" class="kpi-card-link" data-kpi="ticket-qa" aria-expanded="false" disabled>
+              <svg class="kpi-card-link-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="kpi-card-link-text" id="kpiTicketQaLinkText">View Ticket&rarr;QA cases</span>
+            </button>
+          </article>
+        </div>
+        <div class="kpi-expand-panel"><div class="kpi-expand-inner"></div></div>
+      </div>
+
+      <div class="kpi-group">
+        <div class="kpi-group-title"><span aria-hidden="true">🐛</span> Bug Quality</div>
+        <div class="kpi-cards">
+          <article class="kpi-card" style="--kpi-accent: var(--accent-ae)">
+            <div class="kpi-card-top">
+              <span class="kpi-card-icon" aria-hidden="true">🐛</span>
+              <span class="kpi-card-label">EA &rarr; Bug</span>
+            </div>
+            <div class="kpi-card-value" id="kpiEaBugValue">&mdash;</div>
+            <div class="kpi-card-sub" id="kpiEaBugSub">&mdash;</div>
+            <div class="kpi-card-extra" id="kpiEaBugExtra">&mdash;</div>
+            <button type="button" class="kpi-card-link" data-kpi="ea-bug" aria-expanded="false" disabled>
+              <svg class="kpi-card-link-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="kpi-card-link-text" id="kpiEaBugLinkText">View EAs concluded as Known/New Bug</span>
+            </button>
+          </article>
+
+          <article class="kpi-card" style="--kpi-accent: var(--danger)">
+            <div class="kpi-card-top">
+              <span class="kpi-card-icon" aria-hidden="true">⚠️</span>
+              <span class="kpi-card-label">Bug Rejection %</span>
+            </div>
+            <div class="kpi-card-value" id="kpiBugRejectionValue">&mdash;</div>
+            <div class="kpi-card-sub" id="kpiBugRejectionSub">&mdash;</div>
+            <button type="button" class="kpi-card-link" data-kpi="bug-rejection" aria-expanded="false" disabled>
+              <svg class="kpi-card-link-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="kpi-card-link-text" id="kpiBugRejectionLinkText">View EAs w/ Rejected linked Bug</span>
+            </button>
+          </article>
+        </div>
+        <div class="kpi-expand-panel"><div class="kpi-expand-inner"></div></div>
+      </div>
+
+      <div class="kpi-group">
+        <div class="kpi-group-title"><span aria-hidden="true">🛠️</span> Process Gaps &amp; Improvements</div>
+        <div class="kpi-cards">
+          <article class="kpi-card" style="--kpi-accent: var(--secondary)">
+            <div class="kpi-card-top">
+              <span class="kpi-card-icon" aria-hidden="true">🛠️</span>
+              <span class="kpi-card-label">EA &rarr; PG</span>
+            </div>
+            <div class="kpi-card-value" id="kpiEaPgValue">&mdash;</div>
+            <div class="kpi-card-sub" id="kpiEaPgSub">&mdash;</div>
+            <button type="button" class="kpi-card-link" data-kpi="ea-pg" aria-expanded="false" disabled>
+              <svg class="kpi-card-link-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="kpi-card-link-text" id="kpiEaPgLinkText">View EAs concluded as Process Gap</span>
+            </button>
+          </article>
+
+          <article class="kpi-card" style="--kpi-accent: var(--primary)">
+            <div class="kpi-card-top">
+              <span class="kpi-card-icon" aria-hidden="true">📈</span>
+              <span class="kpi-card-label">EA &rarr; Improvements</span>
+            </div>
+            <div class="kpi-card-value" id="kpiEaImprovementsValue">&mdash;</div>
+            <div class="kpi-card-sub" id="kpiEaImprovementsSub">&mdash;</div>
+            <div class="kpi-card-extra">Bug + Process Gap combined</div>
+            <button type="button" class="kpi-card-link" data-kpi="ea-improvements" aria-expanded="false" disabled>
+              <svg class="kpi-card-link-icon" width="11" height="11" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span class="kpi-card-link-text" id="kpiEaImprovementsLinkText">View EAs = Bug &cup; PG</span>
+            </button>
+          </article>
+        </div>
+        <div class="kpi-expand-panel"><div class="kpi-expand-inner"></div></div>
+      </div>
+
+      <details class="bucket-callout kpi-callout">
+        <summary>How are these KPIs calculated? (full rules)</summary>
+        <ul>
+          <li><strong>Ticket &rarr; GM</strong> &mdash; Share of Total SF Cases that carry a link to any GM-XXX EA, regardless of when the EA was created.</li>
+          <li><strong>Ticket &rarr; TEO</strong> &mdash; Share of Total SF Cases linked to a Month EA that TEO resolved (resolved by TEO users + status &isin; {Done, Unable to Conclude, No longer an issue}). EA &rarr; Ticket (TEO) is the same EA set expressed against all Month EAs instead of SF cases.</li>
+          <li><strong>Ticket &rarr; QA</strong> &mdash; Share of Total SF Cases linked to a Month EA that reached QA (not TEO-resolved). EA &rarr; Ticket (QA) is the same EA set expressed against all Month EAs instead of SF cases.</li>
+          <li><strong>EA &rarr; Bug</strong> &mdash; Of Month EAs concluded, the share that closed as Known/New Bug, including duplicates chased back to a bug.</li>
+          <li><strong>Bug Rejection %</strong> &mdash; Of EAs concluded directly as Known/New Bug, the share whose linked bug was later rejected.</li>
+          <li><strong>EA &rarr; PG</strong> &mdash; Of Month EAs concluded, the share that closed as a Process Gap.</li>
+          <li><strong>EA &rarr; Improvements</strong> &mdash; Of Month EAs concluded, the union of Bug and Process Gap outcomes.</li>
+        </ul>
+      </details>
+    </section>
+
+    <section class="bucket-section" aria-label="Bucket counts">
+      <div class="bucket-header">
+        <h2 class="bucket-title" id="bucketCountsTitle">Bucket Counts</h2>
+      </div>
+
+      <div class="bucket-charts">
+        <div class="uptime-chart-box bucket-chart-box">
+          <span class="uptime-overall-label">Unique EAs Split &middot; SF</span>
+          <div class="bucket-pie" id="bucketPieSf">
+            <div class="uptime-pie-center">
+              <span class="uptime-pie-value" id="bucketPieSfTotal">&mdash;</span>
+              <span class="uptime-pie-caption">SF Cases</span>
+            </div>
+          </div>
+          <ul class="uptime-pie-legend">
+            <li><span class="legend-dot" style="--dot-color: var(--secondary)"></span>Month EAs<span class="legend-count" id="bucketSfMonth">&mdash;</span></li>
+            <li><span class="legend-dot" style="--dot-color: var(--accent-gstore)"></span>Old EAs<span class="legend-count" id="bucketSfOld">&mdash;</span></li>
+          </ul>
+        </div>
+
+        <div class="uptime-chart-box bucket-chart-box">
+          <span class="uptime-overall-label">Unique EAs Split &middot; GM</span>
+          <div class="bucket-pie" id="bucketPieGm">
+            <div class="uptime-pie-center">
+              <span class="uptime-pie-value" id="bucketPieGmTotal">&mdash;</span>
+              <span class="uptime-pie-caption">GM Cases</span>
+            </div>
+          </div>
+          <ul class="uptime-pie-legend">
+            <li><span class="legend-dot" style="--dot-color: var(--secondary)"></span>Month EAs<span class="legend-count" id="bucketGmMonth">&mdash;</span></li>
+            <li><span class="legend-dot" style="--dot-color: var(--accent-gstore)"></span>Old EAs<span class="legend-count" id="bucketGmOld">&mdash;</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Bucket</th>
+              <th>SF Cases</th>
+              <th>GM Cases</th>
+            </tr>
+          </thead>
+          <tbody id="bucketTableBody"></tbody>
+        </table>
+      </div>
+
+      <details class="bucket-callout">
+        <summary>What does each bucket row mean?</summary>
+        <ul>
+          <li><strong>Total SF Cases</strong> &mdash; SF cases created in the selected period matching scope: Type &isin; ('Incident') AND Product_Type__c &isin; ('RTP', 'TTP'). Narrowed further by the active Pod/Severity filters.</li>
+          <li><strong>SF &mdash; Any GM link / Unique EAs</strong> &mdash; SF: cases pointing to ANY GM-XXX regardless of when the EA was created. GM: distinct EA keys those cases point to (de-duplicated).</li>
+          <li><strong>SF Linked w/ Month EAs / Month EAs</strong> &mdash; SF: cases whose linked EA was created in this period (IST). GM: distinct Month EAs = In Progress + Concluded.</li>
+          <li><strong>SF Cases / EA &mdash; concluded from TEO</strong> &mdash; Of the Month EAs, the subset matching the TEO filter (resolved by TEO users + status &isin; {Done, Unable to Conclude, No longer an issue}). SF: cases linked to those EAs.</li>
+          <li><strong>SF Cases / EA reached to QA</strong> &mdash; Month EAs NOT in the TEO-resolved filter set &mdash; the QA-bound work pool. By construction equals Month In Progress + Month Concluded. Broader than the Ticket &rarr; QA KPI numerator (that also requires a changelog transition to <code>QA analysis in progress</code>).</li>
+          <li><strong>Month EAs &mdash; In Progress / Concluded</strong> &mdash; Status split of Month EAs (Concluded = Done/No longer an issue/Unable to Conclude, AND not TEO-resolved). Concluded is the EA &rarr; Bug denominator and the TEO Leakage universe.</li>
+          <li><strong>SF Linked w/ Old EAs / Old EAs</strong> &mdash; SF: cases (in-period) whose linked EA was created OUTSIDE the period. GM: distinct Old EAs = Unique EAs linked w/ SF &minus; Month EAs. By construction Month + Old = Unique.</li>
+          <li><strong>Old EAs &mdash; In Progress / Concluded</strong> &mdash; Status split of Old EAs.</li>
+        </ul>
+      </details>
+    </section>
+  </main>
+
+  <script>
+    // ---- Filter bar: active-filter summary + clear all ----
+    // POD is a "deselect to narrow" group (all PODs start selected), unlike
+    // severity/product which are "select to narrow" (none active = All).
+    (function setupFilterToolbar() {
+      const groupLabels = { severity: 'severity', product: 'product', account: 'POD' };
+      const filterGroups = document.querySelectorAll('.filter-bar > .filter-group[data-filter-key]');
+      const badge = document.getElementById('filterActiveBadge');
+      const badgeCount = document.getElementById('filterActiveCount');
+      const hint = document.getElementById('filterToolbarHint');
+      const clearAllBtn = document.getElementById('filterClearAll');
+
+      function updateSummary() {
+        let total = 0;
+        const narrowed = [];
+
+        filterGroups.forEach((group) => {
+          const key = group.getAttribute('data-filter-key');
+          const allChips = group.querySelectorAll('.filter-chip');
+          const activeChips = group.querySelectorAll('.filter-chip.is-active');
+          const status = group.querySelector(`[data-status-for="${key}"]`);
+
+          if (key === 'account') {
+            const deselected = allChips.length - activeChips.length;
+            if (!allChips.length || deselected === 0) {
+              status.textContent = 'All';
+              status.classList.remove('is-narrowed');
+            } else {
+              status.textContent = `${activeChips.length} of ${allChips.length} selected`;
+              status.classList.add('is-narrowed');
+              total += deselected;
+              narrowed.push(groupLabels[key]);
+            }
+          } else if (activeChips.length) {
+            status.textContent = `${activeChips.length} selected`;
+            status.classList.add('is-narrowed');
+            total += activeChips.length;
+            narrowed.push(groupLabels[key]);
+          } else {
+            status.textContent = 'All';
+            status.classList.remove('is-narrowed');
+          }
+        });
+
+        if (total > 0) {
+          badge.hidden = false;
+          badgeCount.textContent = total;
+          hint.textContent = `Narrowed by ${narrowed.join(', ')}`;
+        } else {
+          badge.hidden = true;
+          hint.textContent = 'Showing all severities, products and PODs';
+        }
+        clearAllBtn.disabled = total === 0;
+      }
+
+      // loadPods() populates the POD row asynchronously, after this IIFE has
+      // already run — expose updateSummary so it can refresh the "All" status
+      // once the real POD chip list exists.
+      window.refreshFilterSummary = updateSummary;
+
+      document.querySelectorAll('.filter-chip-row').forEach((row) => {
+        row.addEventListener('click', (e) => {
+          const btn = e.target.closest('.filter-chip');
+          if (!btn) return;
+          btn.classList.toggle('is-active');
+          updateSummary();
+        });
+      });
+
+      clearAllBtn.addEventListener('click', () => {
+        filterGroups.forEach((group) => {
+          if (group.getAttribute('data-filter-key') === 'account') {
+            // "Clear" a deselect-to-narrow group means re-select everything.
+            group.querySelectorAll('.filter-chip').forEach((chip) => chip.classList.add('is-active'));
+          } else {
+            group.querySelectorAll('.filter-chip.is-active').forEach((chip) => chip.classList.remove('is-active'));
+          }
+        });
+        const weekSel = document.getElementById('filterWeek');
+        const siteSel = document.getElementById('filterSite');
+        if (weekSel) weekSel.value = '';
+        if (siteSel) siteSel.value = '';
+        updateSummary();
+        loadKpiData();
+        loadUptimeAndMtbf();
+      });
+
+      updateSummary();
+    })();
+
+    // ---- Software uptime data (from BigQuery via /api/uptime) ----
+
+    // Higher uptime % => green, mid-range => yellow, lower => red.
+    function classifyUptime(pct) {
+      if (pct > 99.8) return 'green';
+      if (pct > 99.4) return 'yellow';
+      return 'red';
+    }
+
+    const LIST_VISIBLE_LIMIT = 10;
+
+    let sliceBounds = null; // cumulative degree bounds for red/yellow/green, set on render
+    let resetUptimePieFilter = () => {}; // replaced once setupPieIsolation runs, below
+    let refreshUptimeListVisibility = () => {}; // replaced once setupPieIsolation runs, below
+
+    // Rebuilds the donut, legend counts and site list from a fresh
+    // /api/uptime snapshot. Called every time the Week/Site/Product Type
+    // filters change, not just once on page load — so it clears uptimeList
+    // itself and resets any active pie-slice isolation from the last render.
+    function renderUptime(uptimeData) {
+      const buckets = { red: [], yellow: [], green: [] };
+      uptimeData.forEach((site) => {
+        buckets[classifyUptime(site.pct)].push(site);
+      });
+      Object.values(buckets).forEach((list) => list.sort((a, b) => b.pct - a.pct));
+
+      const siteCount = uptimeData.length;
+      const total = siteCount || 1;
+      const pctRed = buckets.red.length / total;
+      const pctYellow = buckets.yellow.length / total;
+      const pctGreen = buckets.green.length / total;
+
+      const overallUptime = siteCount ? uptimeData.reduce((sum, site) => sum + site.pct, 0) / siteCount : 0;
+      document.getElementById('uptimeOverallValue').textContent = `${overallUptime.toFixed(1)}%`;
+
+      sliceBounds = {
+        red: [0, pctRed * 360],
+        yellow: [pctRed * 360, (pctRed + pctYellow) * 360],
+        green: [(pctRed + pctYellow) * 360, 360],
+      };
+
+      const pie = document.getElementById('uptimePie');
+      pie.style.setProperty('--pct-red', pctRed);
+      pie.style.setProperty('--pct-yellow', pctYellow);
+      pie.style.setProperty('--pct-green', pctGreen);
+      document.getElementById('uptimePieTotal').textContent = siteCount;
+
+      document.getElementById('uptimeCountRed').textContent = buckets.red.length;
+      document.getElementById('uptimeCountYellow').textContent = buckets.yellow.length;
+      document.getElementById('uptimeCountGreen').textContent = buckets.green.length;
+
+      const colorVar = { red: 'var(--danger)', yellow: 'var(--warning)', green: 'var(--primary)' };
+      const ul = document.getElementById('uptimeList');
+      ul.innerHTML = '';
+
+      ['red', 'yellow', 'green'].forEach((status) => {
+        buckets[status].forEach((site) => {
+          const li = document.createElement('li');
+          li.className = 'uptime-row';
+          li.setAttribute('data-status', status);
+          li.innerHTML = `
+            <span class="uptime-dot" style="--dot-color: ${colorVar[status]}"></span>
+            <span class="uptime-name-block">
+              <span class="uptime-name">${site.name}</span>
+              <span class="uptime-threshold">${site.threshold}</span>
+            </span>
+            <span class="uptime-pct" style="--pct-color: ${colorVar[status]}">${site.pct.toFixed(2)}%</span>
+          `;
+          ul.appendChild(li);
+        });
+      });
+
+      resetUptimePieFilter();
+    }
+
+    // ---- Click a pie slice to isolate that status. Set up once — the
+    // pie/legend/reset elements are never replaced, only the rows inside
+    // uptimeList are (by renderUptime above), so rows are re-queried live
+    // inside isolate/resetFilter rather than cached at setup time. ----
+    (function setupPieIsolation() {
+      const pie = document.getElementById('uptimePie');
+      const legend = document.getElementById('uptimeLegend');
+      const legendItems = legend.querySelectorAll('li[data-status]');
+      const filterBadge = document.getElementById('uptimeFilterBadge');
+      const filterLabel = document.getElementById('uptimeFilterLabel');
+      const filterClear = document.getElementById('uptimeFilterClear');
+      const viewMoreBtn = document.getElementById('uptimeViewMoreBtn');
+      const labelText = { red: 'Red only', yellow: 'Yellow only', green: 'Green only' };
+      const colorVar = { red: 'var(--danger)', yellow: 'var(--warning)', green: 'var(--primary)' };
+
+      let activeFilter = null;
+      let expanded = false;
+
+      // Applies both the pie-slice filter and the 10-row view-more cap in one
+      // pass, so a row's visibility never depends on the order the two
+      // features were toggled in.
+      function updateVisibility() {
+        const rows = document.querySelectorAll('#uptimeList .uptime-row');
+        let matchCount = 0;
+        let shownCount = 0;
+        rows.forEach((row) => {
+          const matchesFilter = !activeFilter || row.getAttribute('data-status') === activeFilter;
+          if (!matchesFilter) {
+            row.hidden = true;
+            return;
+          }
+          matchCount++;
+          if (!expanded && matchCount > LIST_VISIBLE_LIMIT) {
+            row.hidden = true;
+            return;
+          }
+          row.hidden = false;
+          shownCount++;
+        });
+
+        const remaining = matchCount - shownCount;
+        if (remaining > 0) {
+          viewMoreBtn.hidden = false;
+          viewMoreBtn.textContent = `View more (${remaining})`;
+        } else if (expanded && matchCount > LIST_VISIBLE_LIMIT) {
+          viewMoreBtn.hidden = false;
+          viewMoreBtn.textContent = 'View less';
+        } else {
+          viewMoreBtn.hidden = true;
+        }
+      }
+      refreshUptimeListVisibility = updateVisibility;
+
+      viewMoreBtn.addEventListener('click', () => {
+        expanded = !expanded;
+        updateVisibility();
+      });
+
+      function sliceAtPoint(clientX, clientY) {
+        const rect = pie.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = clientX - cx;
+        const dy = clientY - cy;
+        const radius = rect.width / 2;
+        const holeRadius = radius * (61 / 76); // matches the donut hole inset in CSS
+
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > radius || dist < holeRadius) return null;
+
+        const angle = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+        for (const status of ['red', 'yellow', 'green']) {
+          const [start, end] = sliceBounds[status];
+          if (angle >= start && angle < end) return status;
+        }
+        return null;
+      }
+
+      function isolate(status) {
+        activeFilter = status;
+        expanded = false;
+        updateVisibility();
+        legendItems.forEach((li) => {
+          li.classList.toggle('is-active', li.getAttribute('data-status') === status);
+        });
+        filterBadge.hidden = false;
+        filterBadge.style.setProperty('--filter-color', colorVar[status]);
+        filterLabel.textContent = labelText[status];
+      }
+
+      function resetFilter() {
+        activeFilter = null;
+        expanded = false;
+        updateVisibility();
+        legendItems.forEach((li) => li.classList.remove('is-active'));
+        filterBadge.hidden = true;
+      }
+
+      resetUptimePieFilter = resetFilter;
+
+      pie.addEventListener('click', (e) => {
+        const status = sliceAtPoint(e.clientX, e.clientY);
+        if (!status) return;
+        if (activeFilter === status) {
+          resetFilter();
+        } else {
+          isolate(status);
+        }
+      });
+
+      legend.addEventListener('click', (e) => {
+        const li = e.target.closest('li[data-status]');
+        if (!li) return;
+        const status = li.getAttribute('data-status');
+        if (activeFilter === status) {
+          resetFilter();
+        } else {
+          isolate(status);
+        }
+      });
+
+      filterClear.addEventListener('click', resetFilter);
+      document.getElementById('uptimeResetBtn').addEventListener('click', resetFilter);
+    })();
+
+    // ---- Uptime % vs Site Status % Trend (weekly) ----
+    function renderUptimeTrendChart(uptimeWeeklyData) {
+      const el = document.getElementById('uptimeTrendChart');
+      if (!el) return;
+      if (!uptimeWeeklyData.length) {
+        el.innerHTML = '<p class="uptime-hint">No data for the current filter selection.</p>';
+        return;
+      }
+
+      const W = 760, H = 280;
+      const marginTop = 34, marginRight = 44, marginBottom = 40, marginLeft = 34;
+      const plotW = W - marginLeft - marginRight;
+      const plotH = H - marginTop - marginBottom;
+      const n = uptimeWeeklyData.length;
+      const band = plotW / n;
+      const clusterW = band * 0.78;
+      const barGap = 3;
+      const barW = (clusterW - barGap * 2) / 3;
+
+      // Bars and the trend line each get their own vertical band so a tall bar
+      // can never sit at the same height as a low trend point (leftMax caps bars
+      // to the bottom ~62% of the plot; rightMin floors the line to the top ~29%,
+      // leaving a clear gap between the two bands).
+      const leftMax = 100; // % of sites axis (red + yellow + green)
+      const rightMin = 93, rightMax = 100; // Uptime % CXO axis
+
+      const yForLeft = (v) => marginTop + plotH - (v / leftMax) * plotH;
+      const yForRight = (v) => marginTop + plotH - ((v - rightMin) / (rightMax - rightMin)) * plotH;
+      const xFor = (i) => marginLeft + i * band + band / 2;
+
+      function roundedTopRectPath(x, y, w, h, r) {
+        const rr = Math.min(r, w / 2, h);
+        return `M${x},${y + h} L${x},${y + rr} Q${x},${y} ${x + rr},${y} L${x + w - rr},${y} Q${x + w},${y} ${x + w},${y + rr} L${x + w},${y + h} Z`;
+      }
+
+      const leftTicks = [0, 20, 40, 60, 80, 100];
+      const rightTicks = [94, 96, 98, 100];
+
+      const gridlines = leftTicks.map((t) => {
+        const y = yForLeft(t);
+        return `<line x1="${marginLeft}" y1="${y}" x2="${W - marginRight}" y2="${y}" class="uptime-trend-grid" />
+                <text x="${marginLeft - 8}" y="${y}" class="uptime-trend-ytick" text-anchor="end" dominant-baseline="middle">${t}%</text>`;
+      }).join('');
+
+      const rightAxisLabels = rightTicks.map((t) => {
+        const y = yForRight(t);
+        return `<text x="${W - marginRight + 8}" y="${y}" class="uptime-trend-ytick uptime-trend-ytick-right" text-anchor="start" dominant-baseline="middle">${t.toFixed(1)}%</text>`;
+      }).join('');
+
+      const baseline = marginTop + plotH;
+      const colorVar = { red: 'var(--danger)', yellow: 'var(--warning)', green: 'var(--primary)' };
+      const statuses = ['red', 'yellow', 'green'];
+      const valueKey = { red: 'redPct', yellow: 'yellowPct', green: 'greenPct' };
+
+      const bars = uptimeWeeklyData.map((wk, i) => {
+        const clusterStart = xFor(i) - clusterW / 2;
+        const attrs = `data-week="${wk.week}" data-red="${wk.redPct.toFixed(2)}" data-yellow="${wk.yellowPct.toFixed(2)}" data-green="${wk.greenPct.toFixed(2)}" data-uptime="${wk.uptimePct.toFixed(2)}"`;
+        return statuses.map((status, si) => {
+          const x = clusterStart + si * (barW + barGap);
+          const y = yForLeft(wk[valueKey[status]]);
+          const h = baseline - y;
+          return `<path d="${roundedTopRectPath(x, y, barW, h, 3)}" style="fill:${colorVar[status]}" class="uptime-trend-bar" ${attrs} />`;
+        }).join('');
+      }).join('');
+
+      const points = uptimeWeeklyData.map((wk, i) => `${xFor(i)},${yForRight(wk.uptimePct)}`).join(' ');
+
+      const dots = uptimeWeeklyData.map((wk, i) => {
+        const x = xFor(i);
+        const y = yForRight(wk.uptimePct);
+        return `<circle cx="${x}" cy="${y}" r="4.5" class="uptime-trend-dot"
+                  data-week="${wk.week}" data-red="${wk.redPct.toFixed(2)}" data-yellow="${wk.yellowPct.toFixed(2)}" data-green="${wk.greenPct.toFixed(2)}" data-uptime="${wk.uptimePct.toFixed(2)}" />
+                <text x="${x}" y="${y - 10}" class="uptime-trend-line-label" text-anchor="middle">${wk.uptimePct.toFixed(2)}%</text>`;
+      }).join('');
+
+      const labels = uptimeWeeklyData.map((wk, i) => {
+        const x = xFor(i);
+        const y = H - marginBottom + 16;
+        return `<text x="${x}" y="${y}" class="uptime-trend-xtick" text-anchor="middle">Week ${wk.week}</text>`;
+      }).join('');
+
+      el.innerHTML = `
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Uptime percent versus red, yellow and green site percent trend by week">
+          ${gridlines}
+          ${rightAxisLabels}
+          ${bars}
+          <polyline points="${points}" class="uptime-trend-line" fill="none" />
+          ${dots}
+          ${labels}
+        </svg>
+        <div class="uptime-trend-tooltip" id="uptimeTrendTooltip" hidden></div>
+      `;
+
+      const tooltip = document.getElementById('uptimeTrendTooltip');
+
+      function showTooltip(target, evt) {
+        const week = target.getAttribute('data-week');
+        const red = target.getAttribute('data-red');
+        const yellow = target.getAttribute('data-yellow');
+        const green = target.getAttribute('data-green');
+        const uptime = target.getAttribute('data-uptime');
+        tooltip.innerHTML = `<strong>Week ${week}</strong><span>Red: ${red}%</span><span>Yellow: ${yellow}%</span><span>Green: ${green}%</span><span>Uptime: ${uptime}%</span>`;
+        tooltip.hidden = false;
+        const rect = el.getBoundingClientRect();
+        tooltip.style.left = `${evt.clientX - rect.left}px`;
+        tooltip.style.top = `${evt.clientY - rect.top}px`;
+      }
+
+      function hideTooltip() {
+        tooltip.hidden = true;
+      }
+
+      el.querySelectorAll('.uptime-trend-bar, .uptime-trend-dot').forEach((node) => {
+        node.addEventListener('mousemove', (e) => showTooltip(node, e));
+        node.addEventListener('mouseleave', hideTooltip);
+      });
+    }
+
+    // ---- MTBF: Site Distribution (from BigQuery via /api/mtbf) ----
+
+    // Lower MTBF (frequent failures) => red, mid-range => yellow, higher (stable) => green.
+    function classifyMtbf(hours) {
+      if (hours < 24) return 'red';
+      if (hours < 36) return 'yellow';
+      return 'green';
+    }
+
+    let mtbfSliceBounds = null; // cumulative degree bounds for red/yellow/green, set on render
+    let resetMtbfPieFilter = () => {}; // replaced once setupMtbfPieIsolation runs, below
+    let refreshMtbfListVisibility = () => {}; // replaced once setupMtbfPieIsolation runs, below
+
+    // Rebuilds the donut, legend counts and site list from a fresh
+    // /api/mtbf snapshot. Called every time the Week/Site/Product Type
+    // filters change, not just once on page load.
+    function renderMtbf(mtbfData, overall) {
+      const buckets = { red: [], yellow: [], green: [] };
+      mtbfData.forEach((site) => {
+        buckets[classifyMtbf(site.hours)].push(site);
+      });
+      Object.values(buckets).forEach((list) => list.sort((a, b) => a.hours - b.hours));
+
+      const siteCount = mtbfData.length;
+      const total = siteCount || 1;
+      const pctRed = buckets.red.length / total;
+      const pctYellow = buckets.yellow.length / total;
+      const pctGreen = buckets.green.length / total;
+
+      mtbfSliceBounds = {
+        red: [0, pctRed * 360],
+        yellow: [pctRed * 360, (pctRed + pctYellow) * 360],
+        green: [(pctRed + pctYellow) * 360, 360],
+      };
+
+      const pie = document.getElementById('mtbfPie');
+      pie.style.setProperty('--pct-red', pctRed);
+      pie.style.setProperty('--pct-yellow', pctYellow);
+      pie.style.setProperty('--pct-green', pctGreen);
+      document.getElementById('mtbfPieTotal').textContent = siteCount;
+
+      document.getElementById('mtbfOverallValue').textContent = `${overall.toFixed(1)}h`;
+
+      document.getElementById('mtbfCountRed').textContent = buckets.red.length;
+      document.getElementById('mtbfCountYellow').textContent = buckets.yellow.length;
+      document.getElementById('mtbfCountGreen').textContent = buckets.green.length;
+
+      const colorVar = { red: 'var(--danger)', yellow: 'var(--warning)', green: 'var(--primary)' };
+      const ul = document.getElementById('mtbfList');
+      ul.innerHTML = '';
+
+      ['red', 'yellow', 'green'].forEach((status) => {
+        buckets[status].forEach((site) => {
+          const li = document.createElement('li');
+          li.className = 'mtbf-row';
+          li.setAttribute('data-status', status);
+          li.innerHTML = `
+            <span class="mtbf-dot" style="--dot-color: ${colorVar[status]}"></span>
+            <span class="mtbf-name-block">
+              <span class="mtbf-name">${site.name}</span>
+              <span class="mtbf-threshold">${site.threshold}</span>
+            </span>
+            <span class="mtbf-pct" style="--pct-color: ${colorVar[status]}">${site.hours.toFixed(2)}</span>
+          `;
+          ul.appendChild(li);
+        });
+      });
+
+      resetMtbfPieFilter();
+    }
+
+    // ---- Click a pie slice to isolate that status ----
+    (function setupMtbfPieIsolation() {
+      const pie = document.getElementById('mtbfPie');
+      const legend = document.getElementById('mtbfLegend');
+      const legendItems = legend.querySelectorAll('li[data-status]');
+      const filterBadge = document.getElementById('mtbfFilterBadge');
+      const filterLabel = document.getElementById('mtbfFilterLabel');
+      const filterClear = document.getElementById('mtbfFilterClear');
+      const viewMoreBtn = document.getElementById('mtbfViewMoreBtn');
+      const labelText = { red: 'Red only', yellow: 'Yellow only', green: 'Green only' };
+      const colorVar = { red: 'var(--danger)', yellow: 'var(--warning)', green: 'var(--primary)' };
+
+      let activeFilter = null;
+      let expanded = false;
+
+      // Applies both the pie-slice filter and the 10-row view-more cap in one
+      // pass, so a row's visibility never depends on the order the two
+      // features were toggled in.
+      function updateVisibility() {
+        const rows = document.querySelectorAll('#mtbfList .mtbf-row');
+        let matchCount = 0;
+        let shownCount = 0;
+        rows.forEach((row) => {
+          const matchesFilter = !activeFilter || row.getAttribute('data-status') === activeFilter;
+          if (!matchesFilter) {
+            row.hidden = true;
+            return;
+          }
+          matchCount++;
+          if (!expanded && matchCount > LIST_VISIBLE_LIMIT) {
+            row.hidden = true;
+            return;
+          }
+          row.hidden = false;
+          shownCount++;
+        });
+
+        const remaining = matchCount - shownCount;
+        if (remaining > 0) {
+          viewMoreBtn.hidden = false;
+          viewMoreBtn.textContent = `View more (${remaining})`;
+        } else if (expanded && matchCount > LIST_VISIBLE_LIMIT) {
+          viewMoreBtn.hidden = false;
+          viewMoreBtn.textContent = 'View less';
+        } else {
+          viewMoreBtn.hidden = true;
+        }
+      }
+      refreshMtbfListVisibility = updateVisibility;
+
+      viewMoreBtn.addEventListener('click', () => {
+        expanded = !expanded;
+        updateVisibility();
+      });
+
+      function sliceAtPoint(clientX, clientY) {
+        const rect = pie.getBoundingClientRect();
+        const cx = rect.left + rect.width / 2;
+        const cy = rect.top + rect.height / 2;
+        const dx = clientX - cx;
+        const dy = clientY - cy;
+        const radius = rect.width / 2;
+        const holeRadius = radius * (61 / 76); // matches the donut hole inset in CSS
+
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist > radius || dist < holeRadius) return null;
+
+        const angle = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+        for (const status of ['red', 'yellow', 'green']) {
+          const [start, end] = mtbfSliceBounds[status];
+          if (angle >= start && angle < end) return status;
+        }
+        return null;
+      }
+
+      function isolate(status) {
+        activeFilter = status;
+        expanded = false;
+        updateVisibility();
+        legendItems.forEach((li) => {
+          li.classList.toggle('is-active', li.getAttribute('data-status') === status);
+        });
+        filterBadge.hidden = false;
+        filterBadge.style.setProperty('--filter-color', colorVar[status]);
+        filterLabel.textContent = labelText[status];
+      }
+
+      function resetFilter() {
+        activeFilter = null;
+        expanded = false;
+        updateVisibility();
+        legendItems.forEach((li) => li.classList.remove('is-active'));
+        filterBadge.hidden = true;
+      }
+
+      resetMtbfPieFilter = resetFilter;
+
+      pie.addEventListener('click', (e) => {
+        const status = sliceAtPoint(e.clientX, e.clientY);
+        if (!status) return;
+        if (activeFilter === status) {
+          resetFilter();
+        } else {
+          isolate(status);
+        }
+      });
+
+      legend.addEventListener('click', (e) => {
+        const li = e.target.closest('li[data-status]');
+        if (!li) return;
+        const status = li.getAttribute('data-status');
+        if (activeFilter === status) {
+          resetFilter();
+        } else {
+          isolate(status);
+        }
+      });
+
+      filterClear.addEventListener('click', resetFilter);
+      document.getElementById('mtbfResetBtn').addEventListener('click', resetFilter);
+    })();
+
+    // ---- MTBF vs Site Distribution % Trend (weekly) ----
+    function renderMtbfTrendChart(mtbfWeeklyData) {
+      const el = document.getElementById('mtbfTrendChart');
+      if (!el) return;
+      if (!mtbfWeeklyData.length) {
+        el.innerHTML = '<p class="mtbf-hint">No data for the current filter selection.</p>';
+        return;
+      }
+
+      const W = 760, H = 280;
+      const marginTop = 34, marginRight = 34, marginBottom = 40, marginLeft = 34;
+      const plotW = W - marginLeft - marginRight;
+      const plotH = H - marginTop - marginBottom;
+      const n = mtbfWeeklyData.length;
+      const band = plotW / n;
+      const clusterW = band * 0.78;
+      const barGap = 3;
+      const barW = (clusterW - barGap * 2) / 3;
+
+      // Bars and the trend line each get their own vertical band so a tall bar
+      // can never sit at the same height as a low trend point (leftMax caps bars
+      // to the bottom ~65% of the plot; the right axis floors the line to the top).
+      const leftMax = 100; // % of sites axis (red + yellow + green)
+      const rightMin = 0;
+      const maxMtbf = Math.max(...mtbfWeeklyData.map((wk) => wk.mtbf));
+      const rightMax = Math.max(20, Math.ceil((maxMtbf * 1.1) / 5) * 5); // MTBF axis, with headroom
+
+      const yForLeft = (v) => marginTop + plotH - (v / leftMax) * plotH;
+      const yForRight = (v) => marginTop + plotH - ((v - rightMin) / (rightMax - rightMin)) * plotH;
+      const xFor = (i) => marginLeft + i * band + band / 2;
+
+      function roundedTopRectPath(x, y, w, h, r) {
+        const rr = Math.min(r, w / 2, h);
+        return `M${x},${y + h} L${x},${y + rr} Q${x},${y} ${x + rr},${y} L${x + w - rr},${y} Q${x + w},${y} ${x + w},${y + rr} L${x + w},${y + h} Z`;
+      }
+
+      const leftTicks = [0, 20, 40, 60, 80, 100];
+      const rightTickStep = rightMax / 4;
+      const rightTicks = [0, 1, 2, 3, 4].map((n) => Math.round(n * rightTickStep));
+
+      const gridlines = leftTicks.map((t) => {
+        const y = yForLeft(t);
+        return `<line x1="${marginLeft}" y1="${y}" x2="${W - marginRight}" y2="${y}" class="uptime-trend-grid" />
+                <text x="${marginLeft - 8}" y="${y}" class="uptime-trend-ytick" text-anchor="end" dominant-baseline="middle">${t}%</text>`;
+      }).join('');
+
+      const rightAxisLabels = rightTicks.map((t) => {
+        const y = yForRight(t);
+        return `<text x="${W - marginRight + 8}" y="${y}" class="uptime-trend-ytick uptime-trend-ytick-right" text-anchor="start" dominant-baseline="middle">${t}</text>`;
+      }).join('');
+
+      const baseline = marginTop + plotH;
+      const colorVar = { red: 'var(--danger)', yellow: 'var(--warning)', green: 'var(--primary)' };
+      const statuses = ['red', 'yellow', 'green'];
+      const valueKey = { red: 'redPct', yellow: 'yellowPct', green: 'greenPct' };
+
+      const bars = mtbfWeeklyData.map((wk, i) => {
+        const clusterStart = xFor(i) - clusterW / 2;
+        const attrs = `data-week="${wk.week}" data-red="${wk.redPct.toFixed(2)}" data-yellow="${wk.yellowPct.toFixed(2)}" data-green="${wk.greenPct.toFixed(2)}" data-mtbf="${wk.mtbf.toFixed(2)}"`;
+        return statuses.map((status, si) => {
+          const x = clusterStart + si * (barW + barGap);
+          const y = yForLeft(wk[valueKey[status]]);
+          const h = baseline - y;
+          return `<path d="${roundedTopRectPath(x, y, barW, h, 3)}" style="fill:${colorVar[status]}" class="uptime-trend-bar" ${attrs} />`;
+        }).join('');
+      }).join('');
+
+      const points = mtbfWeeklyData.map((wk, i) => `${xFor(i)},${yForRight(wk.mtbf)}`).join(' ');
+
+      const dots = mtbfWeeklyData.map((wk, i) => {
+        const x = xFor(i);
+        const y = yForRight(wk.mtbf);
+        return `<circle cx="${x}" cy="${y}" r="4.5" class="uptime-trend-dot"
+                  data-week="${wk.week}" data-red="${wk.redPct.toFixed(2)}" data-yellow="${wk.yellowPct.toFixed(2)}" data-green="${wk.greenPct.toFixed(2)}" data-mtbf="${wk.mtbf.toFixed(2)}" />
+                <text x="${x}" y="${y - 10}" class="uptime-trend-line-label" text-anchor="middle">${wk.mtbf.toFixed(2)}</text>`;
+      }).join('');
+
+      const labels = mtbfWeeklyData.map((wk, i) => {
+        const x = xFor(i);
+        const y = H - marginBottom + 16;
+        return `<text x="${x}" y="${y}" class="uptime-trend-xtick" text-anchor="middle">Week ${wk.week}</text>`;
+      }).join('');
+
+      el.innerHTML = `
+        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="MTBF versus red, yellow and green site percent trend by week">
+          ${gridlines}
+          ${rightAxisLabels}
+          ${bars}
+          <polyline points="${points}" class="uptime-trend-line" fill="none" />
+          ${dots}
+          ${labels}
+        </svg>
+        <div class="uptime-trend-tooltip" id="mtbfTrendTooltip" hidden></div>
+      `;
+
+      const tooltip = document.getElementById('mtbfTrendTooltip');
+
+      function showTooltip(target, evt) {
+        const week = target.getAttribute('data-week');
+        const red = target.getAttribute('data-red');
+        const yellow = target.getAttribute('data-yellow');
+        const green = target.getAttribute('data-green');
+        const mtbf = target.getAttribute('data-mtbf');
+        tooltip.innerHTML = `<strong>Week ${week}</strong><span>Red: ${red}%</span><span>Yellow: ${yellow}%</span><span>Green: ${green}%</span><span>MTBF: ${mtbf}</span>`;
+        tooltip.hidden = false;
+        const rect = el.getBoundingClientRect();
+        tooltip.style.left = `${evt.clientX - rect.left}px`;
+        tooltip.style.top = `${evt.clientY - rect.top}px`;
+      }
+
+      function hideTooltip() {
+        tooltip.hidden = true;
+      }
+
+      el.querySelectorAll('.uptime-trend-bar, .uptime-trend-dot').forEach((node) => {
+        node.addEventListener('mousemove', (e) => showTooltip(node, e));
+        node.addEventListener('mouseleave', hideTooltip);
+      });
+    }
+
+    // ---- Loads/renders both Uptime and MTBF from the current Select Week /
+    // Site / Product Type filters. Called on page load and whenever any of
+    // those three change (KPI Month/Severity/POD don't
+    // affect these BigQuery-backed sections, so they don't trigger this). ----
+    let stabilityRequestId = 0;
+
+    function skeletonRows(rowClass, count) {
+      return Array.from({ length: count }).map(() => `
+        <li class="${rowClass}" aria-hidden="true">
+          <span class="skeleton-dot skeleton-shimmer"></span>
+          <span class="skeleton-bar skeleton-bar--name skeleton-shimmer"></span>
+          <span class="skeleton-bar skeleton-bar--pct skeleton-shimmer"></span>
+        </li>
+      `).join('');
+    }
+
+    // Shows shimmering placeholders for the Uptime/MTBF pies, legends, site
+    // lists and trend charts while /api/uptime + /api/mtbf are in flight —
+    // otherwise a slow BigQuery response leaves the previous selection's
+    // numbers on screen with no sign a refresh is happening.
+    function setStabilityLoadingState(isLoading) {
+      [
+        'uptimeOverallValue', 'uptimePieTotal', 'uptimeCountRed', 'uptimeCountYellow', 'uptimeCountGreen',
+        'mtbfOverallValue', 'mtbfPieTotal', 'mtbfCountRed', 'mtbfCountYellow', 'mtbfCountGreen',
+      ].forEach((id) => document.getElementById(id).classList.toggle('is-loading', isLoading));
+
+      document.getElementById('uptimePie').classList.toggle('is-loading', isLoading);
+      document.getElementById('mtbfPie').classList.toggle('is-loading', isLoading);
+
+      if (isLoading) {
+        document.getElementById('uptimeList').innerHTML = skeletonRows('uptime-row', 6);
+        document.getElementById('mtbfList').innerHTML = skeletonRows('mtbf-row', 6);
+        document.getElementById('uptimeTrendChart').innerHTML = '<div class="skeleton-chart skeleton-shimmer"></div>';
+        document.getElementById('mtbfTrendChart').innerHTML = '<div class="skeleton-chart skeleton-shimmer"></div>';
+        document.getElementById('uptimeViewMoreBtn').hidden = true;
+        document.getElementById('mtbfViewMoreBtn').hidden = true;
+      }
+    }
+
+    async function loadUptimeAndMtbf() {
+      const requestId = ++stabilityRequestId;
+      setStabilityLoadingState(true);
+
+      const params = new URLSearchParams();
+      const weekSel = document.getElementById('filterWeek');
+      if (weekSel && weekSel.value) {
+        const [y, w] = weekSel.value.split('-');
+        params.set('year', y);
+        params.set('week', w);
+      }
+      const siteSel = document.getElementById('filterSite');
+      if (siteSel && siteSel.value) params.set('site', siteSel.value);
+      getSelectedPods().forEach((p) => params.append('pod', p));
+      activeChipValues(document.querySelector('.filter-group--product .filter-chip-row'))
+        .forEach((p) => params.append('product', p));
+
+      const qs = params.toString();
+      try {
+        const [uptimeRes, mtbfRes] = await Promise.all([
+          fetch(`/api/uptime?${qs}`, { cache: 'no-store' }),
+          fetch(`/api/mtbf?${qs}`, { cache: 'no-store' }),
+        ]);
+        const uptimeJson = await uptimeRes.json();
+        const mtbfJson = await mtbfRes.json();
+        if (requestId !== stabilityRequestId) return; // a newer request has since started
+        if (!uptimeRes.ok) throw new Error(uptimeJson.error || `HTTP ${uptimeRes.status}`);
+        if (!mtbfRes.ok) throw new Error(mtbfJson.error || `HTTP ${mtbfRes.status}`);
+
+        setStabilityLoadingState(false);
+        renderUptime(uptimeJson.snapshot);
+        renderUptimeTrendChart(uptimeJson.weekly);
+        renderMtbf(mtbfJson.snapshot, mtbfJson.overall);
+        renderMtbfTrendChart(mtbfJson.weekly);
+      } catch (err) {
+        if (requestId !== stabilityRequestId) return;
+        setStabilityLoadingState(false);
+        console.error('Failed to load uptime/MTBF data:', err);
+      }
+    }
+
+    // ---- Select Week / Site dropdowns, populated from the live BigQuery
+    // catalog so they never drift from what's actually queryable. ----
+    async function populateStabilityFilterOptions() {
+      const weekSel = document.getElementById('filterWeek');
+      const siteSel = document.getElementById('filterSite');
+      try {
+        const res = await fetch('/api/stability-filters', { cache: 'no-store' });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+
+        const weekOptions = (json.weeks || []).map((w) => {
+          const label = `${w.year} · Week ${w.week} (${w.start} – ${w.end})`;
+          return `<option value="${w.year}-${w.week}">${escapeHtml(label)}</option>`;
+        });
+        weekSel.innerHTML = `<option value="">Latest week</option>${weekOptions.join('')}`;
+
+        const siteOptions = (json.sites || []).map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`);
+        siteSel.innerHTML = `<option value="">All</option>${siteOptions.join('')}`;
+      } catch (err) {
+        console.error('Failed to load Week/Site filter options:', err);
+      }
+    }
+
+    document.getElementById('filterWeek').addEventListener('change', loadUptimeAndMtbf);
+    document.getElementById('filterSite').addEventListener('change', () => {
+      loadUptimeAndMtbf();
+      loadKpiData();
+    });
+
+    document.querySelector('.filter-group--product .filter-chip-row')
+      .addEventListener('click', (e) => {
+        if (!e.target.closest('.filter-chip')) return;
+        loadUptimeAndMtbf();
+        loadKpiData();
+      });
+
+    // ---- Bucket counts: Unique EAs split (Month vs Old) — populated from
+    // the live /api/software-stability response by loadKpiData() below. ----
+    let bucketPieData = { sf: { month: 0, old: 0 }, gm: { month: 0, old: 0 } };
+
+    function renderBucketCharts() {
+      function setPie(key, data) {
+        const total = data.month + data.old;
+        const pctMonth = total ? data.month / total : 0;
+        document.getElementById(`bucketPie${key}`).style.setProperty('--pct-month', pctMonth);
+        document.getElementById(`bucketPie${key}Total`).textContent = total || '—';
+        document.getElementById(`bucket${key}Month`).textContent = data.month;
+        document.getElementById(`bucket${key}Old`).textContent = data.old;
+      }
+      setPie('Sf', bucketPieData.sf);
+      setPie('Gm', bucketPieData.gm);
+    }
+
+    // ---- KPI Summary: "View" buttons expand a data table sourced from the
+    // live drilldowns returned by /api/software-stability (see loadKpiData). ----
+    let kpiTableData = {};
+
+    // Drill-down cells now come from live Jira/Salesforce field values
+    // (account names, subjects, ...) rather than hardcoded mock strings, so
+    // they're escaped before landing in innerHTML.
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, (c) => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+      }[c]));
+    }
+
+    (function setupKpiModal() {
+      function renderTable(data) {
+        const head = data.columns.map((c) => `<th>${escapeHtml(c)}</th>`).join('');
+        const body = data.rows
+          .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`)
+          .join('');
+        return `
+          <div class="kpi-expand-head">
+            <div>
+              <h4 class="kpi-expand-title">${escapeHtml(data.title)}</h4>
+              <p class="kpi-expand-sub">${escapeHtml(data.subtitle)}</p>
+            </div>
+            <button type="button" class="kpi-expand-close" aria-label="Collapse">&times;</button>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead><tr>${head}</tr></thead>
+              <tbody>${body}</tbody>
+            </table>
+          </div>
+        `;
+      }
+
+      document.querySelectorAll('.kpi-group').forEach((group) => {
+        const panel = group.querySelector('.kpi-expand-panel');
+        const inner = panel.querySelector('.kpi-expand-inner');
+        const buttons = group.querySelectorAll('.kpi-card-link[data-kpi]');
+        let activeKey = null;
+
+        function collapse() {
+          activeKey = null;
+          panel.classList.remove('is-open');
+          buttons.forEach((b) => {
+            b.classList.remove('is-active');
+            b.setAttribute('aria-expanded', 'false');
+          });
+        }
+
+        function expand(key, btn) {
+          const data = kpiTableData[key];
+          if (!data) return;
+          activeKey = key;
+          inner.innerHTML = renderTable(data);
+          inner.querySelector('.kpi-expand-close').addEventListener('click', collapse);
+          panel.classList.add('is-open');
+          buttons.forEach((b) => {
+            const isActive = b === btn;
+            b.classList.toggle('is-active', isActive);
+            b.setAttribute('aria-expanded', String(isActive));
+          });
+        }
+
+        buttons.forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const key = btn.getAttribute('data-kpi');
+            if (activeKey === key) {
+              collapse();
+            } else {
+              expand(key, btn);
+            }
+          });
+        });
+      });
+    })();
+
+    // ---- Live KPI data: fetch /api/software-stability and populate the
+    // KPI cards, Bucket Counts table/pies, and drill-down panels. ----
+    function formatPct(x) {
+      return `${(x * 100).toFixed(1)}%`;
+    }
+    function formatInt(n) {
+      return Number(n).toLocaleString('en-US');
+    }
+    function setText(id, text) {
+      const el = document.getElementById(id);
+      if (el) el.textContent = text;
+    }
+    function activeChipValues(row) {
+      if (!row) return [];
+      return [...row.querySelectorAll('.filter-chip.is-active')].map((b) => b.getAttribute('data-value'));
+    }
+
+    async function loadPods() {
+      const row = document.getElementById('filterPodRow');
+      const empty = document.getElementById('filterPodEmpty');
+      try {
+        const res = await fetch('/api/pods', { cache: 'no-store' });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        const pods = json.pods || [];
+        if (!pods.length) {
+          empty.hidden = false;
+          empty.textContent = 'No pod list configured';
+          return;
+        }
+        empty.hidden = true;
+        // All PODs start selected (is-active) — deselecting one removes it from the data.
+        row.innerHTML = pods
+          .map((p) => `<button type="button" class="filter-chip is-active" data-value="${escapeHtml(p)}" title="Click to deselect this POD">${escapeHtml(p)}</button>`)
+          .join('');
+        window.refreshFilterSummary && window.refreshFilterSummary();
+        row.addEventListener('click', (e) => {
+          if (!e.target.closest('.filter-chip')) return;
+          loadKpiData();
+          loadUptimeAndMtbf();
+        });
+      } catch (err) {
+        empty.hidden = false;
+        empty.textContent = `Could not load pod list: ${err.message}`;
+      }
+    }
+
+    // ---- KPI Month selector: last 12 months (incl. current), newest first.
+    // Matches the server's default (current IST month) when left untouched. ----
+    function populateMonthFilter() {
+      const sel = document.getElementById('filterMonth');
+      if (!sel) return;
+      const now = new Date();
+      const options = [];
+      for (let i = 0; i < 12; i++) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const year = d.getFullYear();
+        const month = d.getMonth() + 1; // 1-indexed, matches the API
+        const label = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' }).format(d);
+        options.push(`<option value="${year}-${month}">${label}</option>`);
+      }
+      sel.innerHTML = options.join('');
+      sel.addEventListener('change', loadKpiData);
+    }
+
+    let kpiRequestId = 0;
+
+    // Blanks every KPI/bucket value while a fetch is in flight, so switching
+    // filters never leaves the previous selection's numbers on screen.
+    function setKpiLoadingState(isLoading) {
+      document.querySelectorAll(
+        '.kpi-section .kpi-card-value[id], .kpi-section .kpi-card-sub[id], .kpi-section .kpi-card-extra[id], ' +
+        '.bucket-section .uptime-pie-value[id], .bucket-section .legend-count[id]'
+      ).forEach((el) => {
+        el.classList.toggle('is-loading', isLoading);
+        if (isLoading) el.textContent = '—';
+      });
+      document.querySelectorAll('.kpi-card-link[data-kpi]').forEach((btn) => { btn.disabled = isLoading; });
+      if (isLoading) document.getElementById('bucketTableBody').innerHTML = '';
+    }
+
+    // POD is a "deselect to narrow" group (all PODs start selected). Shared by
+    // loadKpiData (SF/Jira KPIs) and loadUptimeAndMtbf (BigQuery uptime/MTBF
+    // site lists) so deselecting a POD narrows both sections consistently.
+    function getSelectedPods() {
+      const podRow = document.getElementById('filterPodRow');
+      const allPodChips = podRow.querySelectorAll('.filter-chip');
+      const selectedPods = activeChipValues(podRow);
+      if (!allPodChips.length || selectedPods.length === allPodChips.length) {
+        return []; // nothing deselected (or pods not loaded yet) => no filter, show every POD
+      }
+      if (selectedPods.length === 0) {
+        return ['__none_selected__']; // every POD deselected => match nothing
+      }
+      return selectedPods;
+    }
+
+    async function loadKpiData() {
+      const requestId = ++kpiRequestId;
+      const statusEl = document.getElementById('kpiLoadStatus');
+      statusEl.hidden = false;
+      statusEl.classList.remove('is-error');
+      statusEl.textContent = 'Loading live data…';
+      setKpiLoadingState(true);
+
+      const severities = activeChipValues(document.querySelector('.filter-group--severity .filter-chip-row'));
+      const pods = getSelectedPods();
+      const products = activeChipValues(document.querySelector('.filter-group--product .filter-chip-row'));
+
+      const params = new URLSearchParams();
+      severities.forEach((s) => params.append('severity', s));
+      pods.forEach((p) => params.append('pod', p));
+      products.forEach((p) => params.append('product', p));
+
+      const monthSel = document.getElementById('filterMonth');
+      if (monthSel && monthSel.value) {
+        const [y, m] = monthSel.value.split('-');
+        params.set('year', y);
+        params.set('month', m);
+      }
+
+      const siteSel = document.getElementById('filterSite');
+      if (siteSel && siteSel.value) params.set('site', siteSel.value);
+
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+      try {
+        const res = await fetch(`/api/software-stability?${params.toString()}`, { cache: 'no-store', signal: controller.signal });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        if (requestId !== kpiRequestId) return; // a newer request has since started
+        setKpiLoadingState(false);
+        renderKpiData(data);
+        statusEl.hidden = true;
+      } catch (err) {
+        if (requestId !== kpiRequestId) return;
+        setKpiLoadingState(false);
+        statusEl.hidden = false;
+        statusEl.classList.add('is-error');
+        const message = err.name === 'AbortError' ? 'Timed out after 30s waiting for Jira/Salesforce data — try again' : err.message;
+        statusEl.textContent = `Couldn't load live KPI data: ${message}`;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+
+    function renderKpiData(data) {
+      setText('kpiSummaryTitle', `KPI Summary GreyMatter— ${data.period.label}`);
+      setText('bucketCountsTitle', `Bucket Counts — ${data.period.label}`);
+
+      const k = data.kpis;
+      setText('kpiTicketGmValue', formatPct(k.ticketToGm.pct));
+      setText('kpiTicketGmSub', `${formatInt(k.ticketToGm.num)}/${formatInt(k.ticketToGm.den)} SF cases`);
+      setText('kpiTicketGmLinkText', `View ${formatInt(k.ticketToGm.num)} any-GM-link cases`);
+
+      setText('kpiTicketTeoValue', formatPct(k.ticketToTeo.pct));
+      setText('kpiTicketTeoSub', `${formatInt(k.ticketToTeo.num)}/${formatInt(k.ticketToTeo.den)} SF cases`);
+      setText('kpiTicketTeoExtra', `EA → Ticket (TEO): ${formatPct(k.ticketToTeo.ea.pct)} (${formatInt(k.ticketToTeo.ea.num)}/${formatInt(k.ticketToTeo.ea.den)} Month EAs)`);
+      setText('kpiTicketTeoLinkText', `View ${formatInt(k.ticketToTeo.num)} period-linked cases`);
+
+      setText('kpiTicketQaValue', formatPct(k.ticketToQa.pct));
+      setText('kpiTicketQaSub', `${formatInt(k.ticketToQa.num)}/${formatInt(k.ticketToQa.den)} SF cases`);
+      setText('kpiTicketQaExtra', `EA → Ticket (QA): ${formatPct(k.ticketToQa.ea.pct)} (${formatInt(k.ticketToQa.ea.num)}/${formatInt(k.ticketToQa.ea.den)} Month EAs)`);
+      setText('kpiTicketQaLinkText', `View ${formatInt(k.ticketToQa.num)} Ticket→QA cases`);
+
+      setText('kpiEaBugValue', formatPct(k.eaToBug.pct));
+      setText('kpiEaBugSub', `${formatInt(k.eaToBug.num)}/${formatInt(k.eaToBug.den)} Month EAs concluded`);
+      setText('kpiEaBugExtra', `${formatInt(k.eaToBug.directCount)} resolved directly + ${formatInt(k.eaToBug.duplicateCount)} via Duplicate chase`);
+      setText('kpiEaBugLinkText', `View ${formatInt(k.eaToBug.num)} EAs concluded as Known/New Bug`);
+
+      setText('kpiBugRejectionValue', formatPct(k.bugRejection.pct));
+      setText('kpiBugRejectionSub', `${formatInt(k.bugRejection.num)}/${formatInt(k.bugRejection.den)} EAs (direct Known/New Bug)`);
+      setText('kpiBugRejectionLinkText', `View ${formatInt(k.bugRejection.num)} EAs w/ Rejected linked Bug`);
+
+      setText('kpiEaPgValue', formatPct(k.eaToPg.pct));
+      setText('kpiEaPgSub', `${formatInt(k.eaToPg.num)}/${formatInt(k.eaToPg.den)} Month EAs concluded`);
+      setText('kpiEaPgLinkText', `View ${formatInt(k.eaToPg.num)} EAs concluded as Process Gap`);
+
+      setText('kpiEaImprovementsValue', formatPct(k.eaToImprovements.pct));
+      setText('kpiEaImprovementsSub', `${formatInt(k.eaToImprovements.num)}/${formatInt(k.eaToImprovements.den)} Month EAs concluded`);
+      setText('kpiEaImprovementsLinkText', `View ${formatInt(k.eaToImprovements.num)} EAs = Bug ∪ PG`);
+
+      document.querySelectorAll('.kpi-card-link[data-kpi]').forEach((btn) => { btn.disabled = false; });
+
+      const tbody = document.getElementById('bucketTableBody');
+      tbody.innerHTML = data.bucket.rows
+        .map((r) => `<tr><td>${escapeHtml(r.label)}</td><td>${typeof r.sf === 'number' ? formatInt(r.sf) : escapeHtml(r.sf)}</td><td>${typeof r.gm === 'number' ? formatInt(r.gm) : escapeHtml(r.gm)}</td></tr>`)
+        .join('');
+
+      bucketPieData = data.bucket.pies;
+      renderBucketCharts();
+
+      kpiTableData = data.drilldowns;
+    }
+
+    document.querySelector('.filter-group--severity .filter-chip-row')
+      .addEventListener('click', (e) => {
+        if (e.target.closest('.filter-chip')) loadKpiData();
+      });
+
+    populateMonthFilter();
+    loadPods();
+    loadKpiData();
+    populateStabilityFilterOptions();
+    loadUptimeAndMtbf();
+  </script>
+</body>
+</html>
