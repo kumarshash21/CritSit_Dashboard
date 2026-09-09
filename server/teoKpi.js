@@ -15,6 +15,7 @@ import {
 } from './jira.js';
 import { getTeoCases } from './salesforce.js';
 import { getPodMap, buildPodLookup, accountPod } from './podMap.js';
+import { getWeekDateRange, getMonthWeekRange } from './bigquery.js';
 
 // ── Ticket-status constants, ported verbatim from app_v2.py (L179-269) ────
 const QA_STATUSES = new Set(['Queued for QA analysis', 'QA analysis in progress']);
@@ -46,17 +47,49 @@ function pad(n) {
   return String(n).padStart(2, '0');
 }
 
-function istPeriodBounds(year, month) {
-  const lastDay = new Date(year, month, 0).getDate();
-  const periodStartUtcMs = Date.UTC(year, month - 1, 1, 0, 0, 0) - IST_OFFSET_MS;
-  const periodEndUtcMs = Date.UTC(year, month - 1, lastDay + 1, 0, 0, 0) - IST_OFFSET_MS;
-  return { lastDay, periodStartUtcMs, periodEndUtcMs };
+// IST day-window bounds for a [startStr, endStr] calendar-date range
+// (both 'YYYY-MM-DD', inclusive) — shared by the month- and week-scoped
+// period resolvers below so fetchRawTeoData only ever deals in date ranges.
+function istBoundsFromDates(startStr, endStr) {
+  const periodStartUtcMs = Date.parse(`${startStr}T00:00:00Z`) - IST_OFFSET_MS;
+  const periodEndUtcMs = Date.parse(`${endStr}T00:00:00Z`) + 24 * 3600 * 1000 - IST_OFFSET_MS;
+  return { periodStartUtcMs, periodEndUtcMs };
 }
 
 /** Current year/month (1-indexed) as seen in IST — used as the request default. */
 export function currentIstYearMonth() {
   const ist = new Date(Date.now() + IST_OFFSET_MS);
   return { year: ist.getUTCFullYear(), month: ist.getUTCMonth() + 1 };
+}
+
+// KPI Month period: full-week boundaries rather than plain calendar days,
+// resolved against the same BigQuery week catalog (Week_Start_Date/
+// Week_End_Date/Week_Num) as the "Select Week" filter — see
+// getMonthWeekRange's majority-of-days rule. Falls back to plain calendar-day
+// bounds when BigQuery has no week rows covering the month yet (e.g. a
+// future month with no data at all).
+async function monthRangeParams(year, month) {
+  const periodLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' })
+    .format(new Date(year, month - 1, 1));
+  const weekRange = await getMonthWeekRange({ year, month });
+  if (weekRange) return { startStr: weekRange.start, endStr: weekRange.end, periodLabel };
+
+  const lastDay = new Date(year, month, 0).getDate();
+  const startStr = `${year}-${pad(month)}-01`;
+  const endStr = `${year}-${pad(month)}-${pad(lastDay)}`;
+  return { startStr, endStr, periodLabel };
+}
+
+// Week period, resolved against the same BigQuery week catalog (Week_Start_Date/
+// Week_End_Date/Week_Num) that drives the page's "Select Week" dropdown and the
+// Uptime/MTBF panels — so the KPI/Bucket Counts sections can be scoped to the
+// exact same week boundaries. Returns null when the requested (or latest) week
+// can't be resolved (e.g. BigQuery has no rows yet).
+async function weekRangeParams(year, week) {
+  const anchor = await getWeekDateRange({ year, week });
+  if (!anchor) return null;
+  const periodLabel = `${anchor.year} · Week ${anchor.week} (${anchor.start} – ${anchor.end})`;
+  return { startStr: anchor.start, endStr: anchor.end, periodLabel };
 }
 
 function normalizeOffset(s) {
@@ -205,13 +238,8 @@ function buildSfRow(c, gmStatus, inPeriodEaKeys) {
 }
 
 // ── Layer 1: expensive raw fetch (cached) ──────────────────────────────────
-async function fetchRawTeoData({ month, year, types, products }) {
-  const { lastDay, periodStartUtcMs, periodEndUtcMs } = istPeriodBounds(year, month);
-  const startStr = `${year}-${pad(month)}-01`;
-  const endStr = `${year}-${pad(month)}-${pad(lastDay)}`;
-  const periodLabel = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric' })
-    .format(new Date(year, month - 1, 1));
-  const bounds = { periodStartUtcMs, periodEndUtcMs };
+async function fetchRawTeoData({ startStr, endStr, periodLabel, types, products }) {
+  const bounds = istBoundsFromDates(startStr, endStr);
 
   // 1. EA tickets for the period (Stage-scoped, falling back to created-date).
   const stageAri = await discoverStageAri(startStr, endStr);
@@ -385,19 +413,19 @@ async function fetchRawTeoData({ month, year, types, products }) {
   };
 }
 
-const rawCache = new Map(); // "year-month-types-products" -> { data, expiresAt }
+const rawCache = new Map(); // "startStr_endStr-types-products" -> { data, expiresAt }
 
-async function getRawTeoData({ month, year, types, products }) {
+async function getRawTeoData({ startStr, endStr, periodLabel, types, products }) {
   // Undefined (no Category/Product filter chips active) is kept distinct
   // from an explicit list, both in the key and in what's passed through to
   // fetchRawTeoData, so the default scope's cache entry is never confused
   // with a filtered one that happens to resolve to the same case set.
   const typesKey = types ? [...types].sort().join('|') : ' default';
   const productsKey = products ? [...products].sort().join('|') : ' default';
-  const key = `${year}-${month}-${typesKey}-${productsKey}`;
+  const key = `${startStr}_${endStr}-${typesKey}-${productsKey}`;
   const cached = rawCache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.data;
-  const data = await fetchRawTeoData({ month, year, types, products });
+  const data = await fetchRawTeoData({ startStr, endStr, periodLabel, types, products });
   rawCache.set(key, { data, expiresAt: Date.now() + RAW_CACHE_TTL_MS });
   return data;
 }
@@ -611,8 +639,13 @@ function buildDrilldowns(raw, filtered) {
 }
 
 // ── Public entry point ──────────────────────────────────────────────────────
-export async function computeTeoKpis({ month, year, severities = [], pods = [], types, products, site = '' }) {
-  const raw = await getRawTeoData({ month, year, types, products });
+export async function computeTeoKpis({ month, year, week, severities = [], pods = [], types, products, site = '' }) {
+  // week (when given) takes priority over month — it scopes the KPI/Bucket
+  // Counts sections to the exact same week boundaries as the Select Week
+  // filter's Uptime/MTBF panels, instead of the calendar month.
+  const range = week ? await weekRangeParams(year, week) : await monthRangeParams(year, month);
+  if (!range) throw new Error(`No data found for week ${week} of ${year}`);
+  const raw = await getRawTeoData({ ...range, types, products });
   const podMap = await getPodMap();
   const podLookup = buildPodLookup(podMap);
   const filtered = deriveFiltered(raw, { severities, pods, site }, podLookup);
