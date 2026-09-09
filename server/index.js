@@ -6,7 +6,10 @@ import { getCaseListView, getTicketHistory, getTrendData, getTrendDayDetail } fr
 import { dayKeyInZone, isValidTimeZone, zonedMidnightUtc } from './tz.js';
 import { computeTeoKpis, currentIstYearMonth } from './teoKpi.js';
 import { getPodMap, buildPodLookup, accountPod } from './podMap.js';
-import { getUptimeData, getMtbfData, getStabilityFilterOptions, getAllSites } from './bigquery.js';
+import {
+  getUptimeData, getMtbfData, getStabilityFilterOptions, getAllSites,
+  getTicketInflowData, getTicketBacklogData,
+} from './bigquery.js';
 
 function toArray(v) {
   if (v == null) return [];
@@ -143,7 +146,13 @@ app.get('/api/software-stability', async (req, res) => {
     const { year: defaultYear, month: defaultMonth } = currentIstYearMonth();
     const year = Number(req.query.year) || defaultYear;
     const month = Number(req.query.month) || defaultMonth;
-    if (!Number.isInteger(month) || month < 1 || month > 12) {
+    // week (matching the page's "Select Week" filter) takes priority over
+    // month when present — see computeTeoKpis in teoKpi.js.
+    const week = req.query.week ? Number(req.query.week) : undefined;
+    if (week !== undefined && (!Number.isInteger(week) || week < 1 || week > 53)) {
+      return res.status(400).json({ error: 'week must be an integer 1-53' });
+    }
+    if (week === undefined && (!Number.isInteger(month) || month < 1 || month > 12)) {
       return res.status(400).json({ error: 'month must be an integer 1-12' });
     }
     if (!Number.isInteger(year) || year < 2024) {
@@ -158,7 +167,7 @@ app.get('/api/software-stability', async (req, res) => {
     const types = categorySlugs.length ? mapValues(categorySlugs, CATEGORY_TYPE_MAP) : undefined;
     const products = productSlugs.length ? mapValues(productSlugs, PRODUCT_TYPE_MAP, 'sf') : undefined;
     const site = typeof req.query.site === 'string' ? req.query.site : '';
-    const data = await computeTeoKpis({ month, year, severities, pods, types, products, site });
+    const data = await computeTeoKpis({ month, year, week, severities, pods, types, products, site });
     res.json(data);
   } catch (err) {
     console.error(err);
@@ -200,6 +209,59 @@ async function uptimeMtbfParams(req) {
   }
   return { year, week, sites, products };
 }
+
+// Ticket Inflow/Backlog Health read from zendesk_recent_standard_v1, whose
+// Product_Type values are the plain label ('RTP', 'Case Pick', ...) rather
+// than uptime_main's BigQuery code — so these routes map through
+// PRODUCT_TYPE_MAP's 'sf' field (same strings Salesforce uses) instead of
+// 'bq'. Site/POD resolution is unchanged: Standard_Site_Name shares
+// uptime_main's Site vocabulary.
+async function ticketParams(req) {
+  const year = req.query.year ? Number(req.query.year) : undefined;
+  const week = req.query.week ? Number(req.query.week) : undefined;
+  const explicitSites = toArray(req.query.site);
+  const pods = toArray(req.query.pod);
+  const products = mapValues(toArray(req.query.product), PRODUCT_TYPE_MAP, 'sf');
+
+  let sites = explicitSites;
+  if (pods.length) {
+    const podSites = await resolvePodSites(pods);
+    sites = explicitSites.length
+      ? explicitSites.filter((s) => podSites.includes(s))
+      : podSites;
+    if (!sites.length) sites = ['__no_site_match__'];
+  }
+  return { year, week, sites, products };
+}
+
+// Maps the Ticket Inflow Health panel's own Severity-tab chips (data-value
+// "1".."4") to zendesk's SLA_Category values — independent of the page's
+// main Severity filter chips, which only feed the SF/Jira-backed KPI cards.
+function severityLabels(slugs) {
+  return slugs.filter((s) => /^[1-4]$/.test(s)).map((s) => `Severity ${s}`);
+}
+
+app.get('/api/ticket-inflow', async (req, res) => {
+  try {
+    const params = await ticketParams(req);
+    const severities = severityLabels(toArray(req.query.severity));
+    const data = await getTicketInflowData({ ...params, severities });
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+app.get('/api/ticket-backlog', async (req, res) => {
+  try {
+    const data = await getTicketBacklogData(await ticketParams(req));
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
+  }
+});
 
 app.get('/api/uptime', async (req, res) => {
   try {
