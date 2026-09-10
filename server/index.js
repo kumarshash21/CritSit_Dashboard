@@ -2,13 +2,17 @@ import 'dotenv/config';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
-import { getCaseListView, getTicketHistory, getTrendData, getTrendDayDetail } from './salesforce.js';
+import {
+  getCaseListView, getTicketHistory, getTrendData, getTrendDayDetail,
+  getTicketInflowHealth, getTicketBacklogHealth,
+  getTicketResolutionHealth,
+} from './salesforce.js';
 import { dayKeyInZone, isValidTimeZone, zonedMidnightUtc } from './tz.js';
 import { computeTeoKpis, currentIstYearMonth } from './teoKpi.js';
 import { getPodMap, buildPodLookup, accountPod } from './podMap.js';
 import {
   getUptimeData, getMtbfData, getStabilityFilterOptions, getAllSites,
-  getTicketInflowData, getTicketBacklogData,
+  getWeekDateRange,
 } from './bigquery.js';
 
 function toArray(v) {
@@ -241,11 +245,29 @@ function severityLabels(slugs) {
   return slugs.filter((s) => /^[1-4]$/.test(s)).map((s) => `Severity ${s}`);
 }
 
+// Resolves the "Select Week" filter's (year, week) pair — numbered against
+// BigQuery's uptime_main week catalog, the only week catalog this page's
+// dropdown has — to a concrete anchor date for the Salesforce-backed Ticket
+// Inflow/Backlog Health functions' own ISO-week trends. Only the boundary
+// *dates* come from BigQuery here; the ticket data itself is all Salesforce.
+// No selection defaults to the latest fully-completed ISO week (today - 7d),
+// so an in-progress current week never reads as a misleading drop.
+async function ticketHealthAnchor(year, week) {
+  if (year && week) {
+    const range = await getWeekDateRange({ year, week });
+    if (range) return range.end;
+  }
+  return new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+}
+
 app.get('/api/ticket-inflow', async (req, res) => {
   try {
     const params = await ticketParams(req);
     const severities = severityLabels(toArray(req.query.severity));
-    const data = await getTicketInflowData({ ...params, severities });
+    const anchor = await ticketHealthAnchor(params.year, params.week);
+    const data = await getTicketInflowHealth({
+      anchor, sites: params.sites, products: params.products, severities,
+    });
     res.json(data);
   } catch (err) {
     console.error(err);
@@ -255,7 +277,21 @@ app.get('/api/ticket-inflow', async (req, res) => {
 
 app.get('/api/ticket-backlog', async (req, res) => {
   try {
-    const data = await getTicketBacklogData(await ticketParams(req));
+    const params = await ticketParams(req);
+    const anchor = await ticketHealthAnchor(params.year, params.week);
+    const data = await getTicketBacklogHealth({ anchor, sites: params.sites, products: params.products });
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+app.get('/api/ticket-resolution', async (req, res) => {
+  try {
+    const params = await ticketParams(req);
+    const anchor = await ticketHealthAnchor(params.year, params.week);
+    const data = await getTicketResolutionHealth({ anchor, sites: params.sites, products: params.products });
     res.json(data);
   } catch (err) {
     console.error(err);
