@@ -3055,7 +3055,8 @@ td.col-mono {
 /* ---- Ticket Inflow / Backlog Health ---- */
 
 .ticket-inflow-section,
-.ticket-backlog-section {
+.ticket-backlog-section,
+.ticket-resolution-section {
   position: relative;
   margin-top: 22px;
   background: linear-gradient(165deg, color-mix(in srgb, var(--card) 94%, white 3%), var(--card));
@@ -3116,6 +3117,10 @@ td.col-mono {
 
 .ticket-backlog-section .ticket-section-title::before {
   background: linear-gradient(135deg, var(--accent-gstore), var(--accent-ae));
+}
+
+.ticket-resolution-section .ticket-section-title::before {
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
 }
 
 .ticket-section-sub {
@@ -3581,6 +3586,50 @@ td.col-mono {
   color: var(--text-muted);
 }
 
+.ticket-chart-box--resolution {
+  position: relative;
+  border-left: 3px solid transparent;
+  border-left-color: color-mix(in srgb, var(--primary) 55%, transparent);
+  background: linear-gradient(165deg, color-mix(in srgb, var(--primary) 6%, var(--surface)), var(--surface) 55%);
+}
+
+.ticket-resolution-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr) minmax(0, 1.3fr);
+  grid-template-rows: auto 1fr;
+  gap: 16px;
+  align-items: stretch;
+}
+
+.ticket-resolution-body .ticket-chart-box--resolution,
+.ticket-resolution-body .ticket-chart-box--sitewise {
+  grid-row: 1 / span 2;
+}
+
+.ticket-resolution-body .ticket-chart-box--resolution {
+  grid-column: 1;
+}
+
+.ticket-resolution-body .ticket-kpi-row {
+  grid-column: 2;
+  grid-row: 1;
+  display: flex;
+  gap: 16px;
+}
+
+.ticket-resolution-body .ticket-kpi-row .ticket-kpi-tile {
+  flex: 1;
+}
+
+.ticket-resolution-body .ticket-chart-box--mttr-category {
+  grid-column: 2;
+  grid-row: 2;
+}
+
+.ticket-resolution-body .ticket-chart-box--sitewise {
+  grid-column: 3;
+}
+
 @media (max-width: 1080px) {
   .ticket-inflow-body {
     grid-template-columns: 1fr;
@@ -3589,11 +3638,41 @@ td.col-mono {
   .ticket-backlog-body {
     grid-template-columns: 1fr 1fr;
   }
+
+  .ticket-resolution-body {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto;
+  }
+
+  .ticket-resolution-body .ticket-chart-box--resolution,
+  .ticket-resolution-body .ticket-chart-box--sitewise {
+    grid-row: auto;
+  }
+
+  .ticket-resolution-body .ticket-chart-box--sitewise {
+    grid-column: 1 / span 2;
+  }
 }
 
 @media (max-width: 640px) {
   .ticket-backlog-body {
     grid-template-columns: 1fr;
+  }
+
+  .ticket-resolution-body {
+    grid-template-columns: 1fr;
+  }
+
+  .ticket-resolution-body .ticket-kpi-row {
+    grid-column: 1;
+  }
+
+  .ticket-resolution-body .ticket-chart-box--mttr-category {
+    grid-column: 1;
+  }
+
+  .ticket-resolution-body .ticket-chart-box--sitewise {
+    grid-column: 1;
   }
 
   .severity-tabbar {

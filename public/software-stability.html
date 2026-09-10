@@ -29,6 +29,7 @@
     <nav class="page-nav" aria-label="Primary">
       <a href="index.html" class="page-nav-link">Home</a>
       <a href="software-stability.html" class="page-nav-link is-active">Software Stability</a>
+      <!-- <a href="ticket-health.html" class="page-nav-link">Ticket Health</a> -->
     </nav>
     <div class="topbar-meta">
       <span class="env-pill">
@@ -116,115 +117,6 @@
         </div>
       </div>
     </section>
-
-    <!--
-      Ticket Inflow Health + Ticket Backlog Health (temporarily disabled)
-      Together these two sections answer "how many tickets are coming in vs.
-      how many are still open" for the selected week/site/product/pod filters
-      (set in the filter toolbar above) and the severity tabs inside Inflow.
-      Data is fetched from /api/ticket-inflow and /api/ticket-backlog
-      (see the "Ticket Inflow / Backlog Health" JS block below) and both
-      sections share the same trend-chart + sitewise top/bottom-N pattern.
-      Commented out below to hide from the page without deleting the markup;
-      remove the wrapping comment tags to bring the sections back.
-
-    <section class="ticket-inflow-section" aria-label="Ticket inflow health">
-      New tickets raised: weekly headline count, WoW badge, 4-wk moving avg, and a trend line
-      <div class="ticket-section-header">
-        <h2 class="ticket-section-title">Ticket Inflow Health</h2>
-        <p class="ticket-section-sub">New tickets raised this week, week-over-week change, and where they're coming from &middot; filter by severity below</p>
-      </div>
-
-      Restricts inflow data (headline + sitewise chart) to one severity at a time
-      <div class="severity-tabbar" id="inflowSeverityTabs" role="tablist" aria-label="Filter Ticket Inflow Health by severity">
-        <button type="button" class="severity-tab" data-value="1">Severity 1</button>
-        <button type="button" class="severity-tab" data-value="2">Severity 2</button>
-        <button type="button" class="severity-tab" data-value="3">Severity 3</button>
-        <button type="button" class="severity-tab" data-value="4">Severity 4</button>
-      </div>
-
-      <div class="ticket-inflow-body">
-        Overall inflow trend: current week total, WoW change badge, prior 4-wk moving avg for context
-        <div class="ticket-chart-box ticket-chart-box--inflow">
-          <h3 class="ticket-chart-title">Ticket Inflow</h3>
-          <div class="ticket-headline-row">
-            <span class="ticket-headline-value" id="inflowHeadlineValue">&mdash;</span>
-            <span class="ticket-headline-badge" id="inflowHeadlineBadge">&mdash;</span>
-            <span class="ticket-headline-ma">
-              <span class="ticket-headline-ma-label">Prev. 4-Wk. MA</span>
-              <span class="ticket-headline-ma-value" id="inflowHeadlineMa">&mdash;</span>
-            </span>
-          </div>
-          <div class="ticket-line-chart" id="inflowTrendChart"></div>
-        </div>
-
-        Breaks inflow down by site; toggle shows the Top N or Bottom N sites by ticket count / % change
-        <div class="ticket-chart-box ticket-chart-box--sitewise">
-          <div class="ticket-sitewise-head">
-            <h3 class="ticket-chart-title">Sitewise Ticket Inflow vs % Change</h3>
-            <div class="toggle-btn-group" id="inflowToggleGroup">
-              <button type="button" class="toggle-btn is-active" data-mode="top">Top</button>
-              <button type="button" class="toggle-btn" data-mode="bottom">Bottom</button>
-            </div>
-          </div>
-          <div class="ticket-combo-chart" id="inflowSitewiseChart"></div>
-        </div>
-      </div>
-    </section>
-
-    <section class="ticket-backlog-section" aria-label="Ticket backlog health">
-      Open tickets still outstanding: volume, SLA compliance, aging, and status mix
-      <div class="ticket-section-header">
-        <h2 class="ticket-section-title">Ticket Backlog Health</h2>
-        <p class="ticket-section-sub">Open ticket volume, SLA achievement, aging, and status mix &middot; sitewise aging analysis below</p>
-      </div>
-
-      <div class="ticket-backlog-body">
-        Total open backlog trend with WoW badge
-        <div class="ticket-chart-box ticket-chart-box--backlog">
-          <h3 class="ticket-chart-title">Overall Tickets Backlog</h3>
-          <div class="ticket-headline-row">
-            <span class="ticket-headline-value" id="backlogHeadlineValue">&mdash;</span>
-            <span class="ticket-headline-badge" id="backlogHeadlineBadge">&mdash;</span>
-          </div>
-          <div class="ticket-line-chart" id="backlogTrendChart"></div>
-        </div>
-
-        % of Sev 1/2/3 tickets resolved within SLA
-        <div class="ticket-kpi-tile ticket-kpi-tile--sla">
-          <span class="ticket-kpi-label">SLA Achieved %<em>(Sev 1,2,3)</em></span>
-          <span class="ticket-kpi-value" id="slaAchievedValue">&mdash;</span>
-        </div>
-
-        Average age in days of open Sev 1/2/3 tickets
-        <div class="ticket-kpi-tile ticket-kpi-tile--aging">
-          <span class="ticket-kpi-label">Ticket Avg. Aging (Days)<em>(Sev 1,2,3)</em></span>
-          <span class="ticket-kpi-value" id="agingDaysValue">&mdash;</span>
-        </div>
-
-        Distribution of open tickets across status buckets (e.g. new/in-progress/on-hold)
-        <div class="ticket-status-box">
-          <h3 class="ticket-chart-title">Status</h3>
-          <div class="ticket-status-body">
-            <div class="ticket-status-pie" id="statusPie"></div>
-            <ul class="ticket-status-legend" id="statusLegend"></ul>
-          </div>
-        </div>
-      </div>
-
-      Sitewise backlog aging: toggle shows Top N or Bottom N sites by aging/backlog size
-      <div class="ticket-chart-box ticket-chart-box--sitewise ticket-chart-box--full">
-        <div class="ticket-sitewise-head">
-          <h3 class="ticket-chart-title">Overall Tickets BL Aging Analysis Top/Bottom Sites</h3>
-          <div class="toggle-btn-group" id="backlogToggleGroup">
-            <button type="button" class="toggle-btn is-active" data-mode="top">Top</button>
-            <button type="button" class="toggle-btn" data-mode="bottom">Bottom</button>
-          </div>
-        </div>
-        <div class="ticket-combo-chart" id="backlogSitewiseChart"></div>
-      </div>
-    </section>
-    -->
 
     <section class="uptime-section" aria-label="Software uptime data">
       <div class="uptime-header">
@@ -620,7 +512,6 @@
         updateSummary();
         loadKpiData();
         loadUptimeAndMtbf();
-        loadTicketHealth();
       });
 
       updateSummary();
@@ -659,7 +550,7 @@
       const pctGreen = buckets.green.length / total;
 
       const overallUptime = siteCount ? uptimeData.reduce((sum, site) => sum + site.pct, 0) / siteCount : 0;
-      document.getElementById('uptimeOverallValue').textContent = `${overallUptime.toFixed(1)}%`;
+      document.getElementById('uptimeOverallValue').textContent = `${overallUptime.toFixed(2)}%`;
 
       sliceBounds = {
         red: [0, pctRed * 360],
@@ -985,7 +876,7 @@
       pie.style.setProperty('--pct-green', pctGreen);
       document.getElementById('mtbfPieTotal').textContent = siteCount;
 
-      document.getElementById('mtbfOverallValue').textContent = `${overall.toFixed(1)}h`;
+      document.getElementById('mtbfOverallValue').textContent = `${overall.toFixed(2)}h`;
 
       document.getElementById('mtbfCountRed').textContent = buckets.red.length;
       document.getElementById('mtbfCountYellow').textContent = buckets.yellow.length;
@@ -1363,12 +1254,10 @@
     document.getElementById('filterWeek').addEventListener('change', () => {
       loadUptimeAndMtbf();
       loadKpiData();
-      loadTicketHealth();
     });
     document.getElementById('filterSite').addEventListener('change', () => {
       loadUptimeAndMtbf();
       loadKpiData();
-      loadTicketHealth();
     });
 
     document.querySelector('.filter-group--product .filter-chip-row')
@@ -1376,7 +1265,6 @@
         if (!e.target.closest('.filter-chip')) return;
         loadUptimeAndMtbf();
         loadKpiData();
-        loadTicketHealth();
       });
 
     // ---- Bucket counts: Unique EAs split (Month vs Old) — populated from
@@ -1514,7 +1402,6 @@
           if (!e.target.closest('.filter-chip')) return;
           loadKpiData();
           loadUptimeAndMtbf();
-          loadTicketHealth();
         });
       } catch (err) {
         empty.hidden = false;
@@ -1684,321 +1571,11 @@
         if (e.target.closest('.filter-chip')) loadKpiData();
       });
 
-    // ---- Ticket Inflow / Backlog Health (from BigQuery via /api/ticket-inflow
-    // and /api/ticket-backlog). Shares the page's Select Week / Site / Product
-    // Type / POD filters with Uptime/MTBF; the Severity tabs inside the Ticket
-    // Inflow Health box are a separate, local filter (single-select, toggle off
-    // to reset) that only narrows that one panel. ----
-
-    function formatSignedPct(pct) {
-      if (pct === null || pct === undefined) return 'New';
-      const sign = pct > 0 ? '+' : '';
-      return `${sign}${pct.toFixed(0)}%`;
-    }
-
-    // More tickets inflowing / sitting in backlog is worse, so a positive
-    // week-over-week change reads as "up" (red) and a decrease reads as
-    // "down" (green) — same semantic for both headline badges.
-    function setTrendBadge(elId, pct) {
-      const el = document.getElementById(elId);
-      if (!el) return;
-      el.classList.remove('is-up', 'is-down');
-      if (typeof pct === 'number' && !Number.isNaN(pct) && pct !== 0) {
-        el.classList.add(pct > 0 ? 'is-up' : 'is-down');
-      }
-    }
-
-    function ticketQueryParams() {
-      const params = new URLSearchParams();
-      const weekSel = document.getElementById('filterWeek');
-      if (weekSel && weekSel.value) {
-        const [y, w] = weekSel.value.split('-');
-        params.set('year', y);
-        params.set('week', w);
-      }
-      const siteSel = document.getElementById('filterSite');
-      if (siteSel && siteSel.value) params.set('site', siteSel.value);
-      getSelectedPods().forEach((p) => params.append('pod', p));
-      activeChipValues(document.querySelector('.filter-group--product .filter-chip-row'))
-        .forEach((p) => params.append('product', p));
-      return params;
-    }
-
-    // A single-series weekly trend line (Ticket Inflow count / Overall Tickets
-    // Backlog count) — point labels + week x-axis, no secondary axis needed.
-    function renderTicketLineChart(elId, points) {
-      const el = document.getElementById(elId);
-      if (!el) return;
-      if (!points.length) {
-        el.innerHTML = '<p class="ticket-chart-hint">No data for the current filter selection.</p>';
-        return;
-      }
-      const W = 640, H = 230;
-      const marginTop = 30, marginRight = 16, marginBottom = 30, marginLeft = 16;
-      const plotW = W - marginLeft - marginRight;
-      const plotH = H - marginTop - marginBottom;
-      const n = points.length;
-      const xFor = (i) => marginLeft + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
-      const values = points.map((p) => p.count);
-      const maxV = Math.max(...values, 1);
-      const minV = Math.min(Math.min(...values), 0);
-      // One-off historical spikes (a bulk ticket-cleanup event rolling through
-      // this reconstructed trend, see getTicketBacklogData) would otherwise
-      // squash every other week onto a flat line — cap the *axis* at a sane
-      // multiple of the runner-up value, and clamp only the plotted position;
-      // the point's real value still shows in its label.
-      const sortedDesc = [...values].sort((a, b) => b - a);
-      const secondMaxV = sortedDesc.length > 1 ? sortedDesc[1] : maxV;
-      const axisMax = secondMaxV > 0 && maxV > secondMaxV * 2.5 ? Math.ceil(secondMaxV * 1.3) : maxV;
-      const range = Math.max(axisMax - minV, 1);
-      const yFor = (v) => marginTop + plotH - ((Math.min(v, axisMax) - minV) / range) * plotH;
-
-      const gridlines = [0, 0.5, 1].map((t) => {
-        const y = marginTop + plotH * t;
-        return `<line x1="${marginLeft}" y1="${y}" x2="${W - marginRight}" y2="${y}" class="ticket-line-grid" />`;
-      }).join('');
-
-      const baselineY = yFor(minV);
-      const linePts = points.map((p, i) => `${xFor(i)},${yFor(p.count)}`).join(' ');
-      const areaPath = `M${xFor(0)},${baselineY} L${linePts.split(' ').join(' L')} L${xFor(n - 1)},${baselineY} Z`;
-      const gradientId = `${elId}Gradient`;
-      const dots = points.map((p, i) => {
-        const x = xFor(i);
-        const y = yFor(p.count);
-        return `<circle cx="${x}" cy="${y}" r="4" class="ticket-line-dot" />
-                <text x="${x}" y="${y - 10}" class="ticket-line-label" text-anchor="middle">${formatInt(p.count)}</text>`;
-      }).join('');
-      const labels = points.map((p, i) => {
-        const x = xFor(i);
-        return `<text x="${x}" y="${H - marginBottom + 16}" class="ticket-line-xtick" text-anchor="middle">${p.week}</text>`;
-      }).join('');
-
-      el.innerHTML = `
-        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Weekly trend chart">
-          <defs>
-            <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" class="ticket-line-grad-start" />
-              <stop offset="100%" class="ticket-line-grad-end" />
-            </linearGradient>
-          </defs>
-          ${gridlines}
-          <path d="${areaPath}" fill="url(#${gradientId})" class="ticket-line-area" />
-          <polyline points="${linePts}" class="ticket-line-path" fill="none" />
-          ${dots}
-          ${labels}
-        </svg>
-      `;
-    }
-
-    // Bar (count, left scale) + line (a secondary per-site metric — % WoW
-    // change for inflow, avg aging days for backlog — its own independent
-    // scale, since the two metrics aren't comparable) combo chart, sorted by
-    // count with a Top/Bottom N toggle.
-    function renderTicketComboChart(elId, fullList, mode, { n = 8, lineFormat }) {
-      const el = document.getElementById(elId);
-      if (!el) return;
-      if (!fullList.length) {
-        el.innerHTML = '<p class="ticket-chart-hint">No data for the current filter selection.</p>';
-        return;
-      }
-      const sorted = [...fullList].sort((a, b) => b.count - a.count);
-      const items = mode === 'top' ? sorted.slice(0, n) : sorted.slice(-n).reverse();
-
-      const W = Math.max(640, items.length * 78);
-      const H = 300;
-      const marginTop = 50, marginRight = 16, marginBottom = 74, marginLeft = 16;
-      const plotW = W - marginLeft - marginRight;
-      const plotH = H - marginTop - marginBottom;
-      const baseline = marginTop + plotH;
-      const n2 = items.length;
-      const band = plotW / n2;
-      const barW = Math.min(48, band * 0.5);
-      const xFor = (i) => marginLeft + i * band + band / 2;
-
-      // Bars, their count labels, and the line/badges each get their own
-      // fixed-pixel vertical band (not proportional shares of plotH) — a
-      // reserved gap between the bar-label zone and the line band guarantees
-      // they never collide regardless of how the values happen to scale.
-      const barBandH = plotH * 0.42;
-      const barTopLimit = baseline - barBandH;
-      const labelZoneH = 26;
-      const lineBandBottom = barTopLimit - labelZoneH;
-      const lineBandTop = marginTop + 18;
-      const lineBandH = Math.max(lineBandBottom - lineBandTop, 20);
-
-      const maxCount = Math.max(...items.map((it) => it.count), 1);
-      const yForBar = (v) => baseline - (v / maxCount) * barBandH;
-
-      const lineVals = items.map((it) => it.lineValue).filter((v) => typeof v === 'number' && !Number.isNaN(v));
-      const lineMax = lineVals.length ? Math.max(...lineVals) : 1;
-      const lineMin = lineVals.length ? Math.min(...lineVals, 0) : 0;
-      const lineRange = Math.max(lineMax - lineMin, 1);
-      const yForLine = (v) => lineBandBottom - ((v - lineMin) / lineRange) * lineBandH;
-
-      function roundedTopRectPath(x, y, w, h, r) {
-        const rr = Math.min(r, w / 2, Math.max(h, 0));
-        return `M${x},${y + h} L${x},${y + rr} Q${x},${y} ${x + rr},${y} L${x + w - rr},${y} Q${x + w},${y} ${x + w},${y + rr} L${x + w},${y + h} Z`;
-      }
-
-      const bars = items.map((it, i) => {
-        const x = xFor(i) - barW / 2;
-        const y = yForBar(it.count);
-        return `<path d="${roundedTopRectPath(x, y, barW, baseline - y, 4)}" class="ticket-combo-bar" />
-                <text x="${xFor(i)}" y="${y - 8}" class="ticket-combo-bar-label" text-anchor="middle">${formatInt(it.count)}</text>`;
-      }).join('');
-
-      const hasLine = lineVals.length > 0;
-      const linePts = hasLine ? items.map((it, i) => `${xFor(i)},${yForLine(typeof it.lineValue === 'number' ? it.lineValue : lineMin)}`).join(' ') : '';
-      const badges = items.map((it, i) => {
-        if (typeof it.lineValue !== 'number' || Number.isNaN(it.lineValue)) return '';
-        const x = xFor(i);
-        const y = yForLine(it.lineValue);
-        return `<circle cx="${x}" cy="${y}" r="3.5" class="ticket-combo-dot" />
-                <g transform="translate(${x}, ${y - 14})">
-                  <rect x="-24" y="-11" width="48" height="18" rx="9" class="ticket-combo-badge" />
-                  <text x="0" y="2" text-anchor="middle" class="ticket-combo-badge-text">${lineFormat(it.lineValue)}</text>
-                </g>`;
-      }).join('');
-
-      const xLabels = items.map((it, i) => {
-        const x = xFor(i);
-        const y = baseline + 16;
-        const label = it.name.length > 14 ? `${it.name.slice(0, 13)}…` : it.name;
-        return `<text x="${x}" y="${y}" class="ticket-combo-xtick" text-anchor="end" transform="rotate(-32, ${x}, ${y})"><title>${it.name}</title>${label}</text>`;
-      }).join('');
-
-      el.innerHTML = `
-        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Sitewise chart">
-          ${bars}
-          ${hasLine ? `<polyline points="${linePts}" class="ticket-combo-line" fill="none" />` : ''}
-          ${badges}
-          ${xLabels}
-        </svg>
-      `;
-    }
-
-    const STATUS_COLORS = ['#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#10b981', '#06b6d4', '#f97316', '#6366f1'];
-
-    function renderStatusDonut(statusData) {
-      const pie = document.getElementById('statusPie');
-      const legend = document.getElementById('statusLegend');
-      if (!pie || !legend) return;
-      const total = statusData.reduce((sum, s) => sum + s.count, 0);
-      if (!total) {
-        pie.style.background = 'var(--surface)';
-        legend.innerHTML = '<li class="ticket-status-empty">No open tickets for the current filter selection.</li>';
-        return;
-      }
-      let cursor = 0;
-      const stops = statusData.map((s, i) => {
-        const start = (cursor / total) * 360;
-        cursor += s.count;
-        const end = (cursor / total) * 360;
-        return `${STATUS_COLORS[i % STATUS_COLORS.length]} ${start}deg ${end}deg`;
-      }).join(', ');
-      pie.style.background = `conic-gradient(${stops})`;
-      legend.innerHTML = statusData.map((s, i) => `
-        <li>
-          <span class="legend-dot" style="--dot-color: ${STATUS_COLORS[i % STATUS_COLORS.length]}"></span>
-          ${escapeHtml(s.status)}
-          <span class="legend-count">${formatInt(s.count)}</span>
-        </li>
-      `).join('');
-    }
-
-    let inflowSitewiseData = [];
-    let backlogSitewiseData = [];
-    let inflowToggleMode = 'top';
-    let backlogToggleMode = 'top';
-    let inflowSeverity = null;
-
-    function pctChangeLineFormat(v) { return v === 0 ? '0%' : formatSignedPct(v); }
-    function agingLineFormat(v) { return `${v.toFixed(0)}d`; }
-
-    async function loadTicketInflow() {
-      const params = ticketQueryParams();
-      if (inflowSeverity) params.set('severity', inflowSeverity);
-      try {
-        const res = await fetch(`/api/ticket-inflow?${params.toString()}`, { cache: 'no-store' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-
-        setText('inflowHeadlineValue', formatInt(data.headline.count));
-        setText('inflowHeadlineBadge', formatSignedPct(data.headline.wowPct));
-        setTrendBadge('inflowHeadlineBadge', data.headline.wowPct);
-        setText('inflowHeadlineMa', data.headline.prevMa ? data.headline.prevMa.toFixed(0) : '—');
-
-        renderTicketLineChart('inflowTrendChart', data.trend);
-
-        inflowSitewiseData = data.sitewise.map((s) => ({ name: s.name, count: s.count, lineValue: s.pctChange }));
-        renderTicketComboChart('inflowSitewiseChart', inflowSitewiseData, inflowToggleMode, { n: 8, lineFormat: pctChangeLineFormat });
-      } catch (err) {
-        console.error('Failed to load Ticket Inflow data:', err);
-      }
-    }
-
-    async function loadTicketBacklog() {
-      const params = ticketQueryParams();
-      try {
-        const res = await fetch(`/api/ticket-backlog?${params.toString()}`, { cache: 'no-store' });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
-
-        setText('backlogHeadlineValue', formatInt(data.headline.count));
-        setText('backlogHeadlineBadge', formatSignedPct(data.headline.wowPct));
-        setTrendBadge('backlogHeadlineBadge', data.headline.wowPct);
-        renderTicketLineChart('backlogTrendChart', data.trend);
-
-        setText('slaAchievedValue', data.sla.pct === null ? 'N/A' : `${data.sla.pct.toFixed(1)}%`);
-        setText('agingDaysValue', data.agingDays === null ? 'N/A' : data.agingDays.toFixed(0));
-
-        renderStatusDonut(data.status);
-
-        backlogSitewiseData = data.sitewise.map((s) => ({ name: s.name, count: s.count, lineValue: s.agingDays }));
-        renderTicketComboChart('backlogSitewiseChart', backlogSitewiseData, backlogToggleMode, { n: 12, lineFormat: agingLineFormat });
-      } catch (err) {
-        console.error('Failed to load Ticket Backlog data:', err);
-      }
-    }
-
-    function loadTicketHealth() {
-      loadTicketInflow();
-      loadTicketBacklog();
-    }
-
-    document.getElementById('inflowSeverityTabs')?.addEventListener('click', (e) => {
-      const btn = e.target.closest('.severity-tab');
-      if (!btn) return;
-      const value = btn.getAttribute('data-value');
-      const wasActive = btn.classList.contains('is-active');
-      document.querySelectorAll('#inflowSeverityTabs .severity-tab').forEach((b) => b.classList.remove('is-active'));
-      inflowSeverity = wasActive ? null : value;
-      if (!wasActive) btn.classList.add('is-active');
-      loadTicketInflow();
-    });
-
-    document.getElementById('inflowToggleGroup')?.addEventListener('click', (e) => {
-      const btn = e.target.closest('.toggle-btn');
-      if (!btn) return;
-      inflowToggleMode = btn.getAttribute('data-mode');
-      document.querySelectorAll('#inflowToggleGroup .toggle-btn').forEach((b) => b.classList.toggle('is-active', b === btn));
-      renderTicketComboChart('inflowSitewiseChart', inflowSitewiseData, inflowToggleMode, { n: 8, lineFormat: pctChangeLineFormat });
-    });
-
-    document.getElementById('backlogToggleGroup')?.addEventListener('click', (e) => {
-      const btn = e.target.closest('.toggle-btn');
-      if (!btn) return;
-      backlogToggleMode = btn.getAttribute('data-mode');
-      document.querySelectorAll('#backlogToggleGroup .toggle-btn').forEach((b) => b.classList.toggle('is-active', b === btn));
-      renderTicketComboChart('backlogSitewiseChart', backlogSitewiseData, backlogToggleMode, { n: 12, lineFormat: agingLineFormat });
-    });
-
     populateMonthFilter();
     loadPods();
     loadKpiData();
     populateStabilityFilterOptions();
     loadUptimeAndMtbf();
-    loadTicketHealth();
   </script>
 </body>
 </html>
