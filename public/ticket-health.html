@@ -29,7 +29,7 @@
     <nav class="page-nav" aria-label="Primary">
       <a href="index.html" class="page-nav-link">Home</a>
       <a href="software-stability.html" class="page-nav-link">Software Stability</a>
-      <!-- <a href="ticket-health.html" class="page-nav-link is-active">Ticket Health</a> -->
+      <a href="ticket-health.html" class="page-nav-link is-active">Ticket Health</a>
     </nav>
     <div class="topbar-meta">
       <span class="env-pill">
@@ -158,19 +158,44 @@
           <span class="ticket-kpi-label">SLA Achieved %<em>(Sev 1,2,3)</em></span>
           <span class="ticket-kpi-value" id="slaAchievedValue">&mdash;</span>
         </div>
+      </div>
 
-        <div class="ticket-kpi-tile ticket-kpi-tile--aging">
-          <span class="ticket-kpi-label">Ticket Avg. Aging (Days)<em>(Sev 1,2,3)</em></span>
-          <span class="ticket-kpi-value" id="agingDaysValue">&mdash;</span>
-        </div>
-
-        <div class="ticket-status-box">
-          <h3 class="ticket-chart-title">Status</h3>
-          <div class="ticket-status-body">
-            <div class="ticket-status-pie" id="statusPie"></div>
-            <ul class="ticket-status-legend" id="statusLegend"></ul>
+      <div class="ticket-backlog-severity-grid" id="backlogSeverityGrid">
+        <div class="ticket-severity-card ticket-severity-card--1">
+          <h3 class="ticket-chart-title">Severity 1</h3>
+          <div class="ticket-kpi-tile ticket-kpi-tile--aging ticket-kpi-tile--compact">
+            <span class="ticket-kpi-label">Avg. Aging (Days)</span>
+            <span class="ticket-kpi-value" id="agingDaysValue-1">&mdash;</span>
           </div>
         </div>
+
+        <div class="ticket-severity-card ticket-severity-card--2">
+          <h3 class="ticket-chart-title">Severity 2</h3>
+          <div class="ticket-kpi-tile ticket-kpi-tile--aging ticket-kpi-tile--compact">
+            <span class="ticket-kpi-label">Avg. Aging (Days)</span>
+            <span class="ticket-kpi-value" id="agingDaysValue-2">&mdash;</span>
+          </div>
+        </div>
+
+        <div class="ticket-severity-card ticket-severity-card--3">
+          <h3 class="ticket-chart-title">Severity 3</h3>
+          <div class="ticket-kpi-tile ticket-kpi-tile--aging ticket-kpi-tile--compact">
+            <span class="ticket-kpi-label">Avg. Aging (Days)</span>
+            <span class="ticket-kpi-value" id="agingDaysValue-3">&mdash;</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="ticket-chart-box ticket-chart-box--full">
+        <div class="ticket-sitewise-head">
+          <h3 class="ticket-chart-title">Backlog Status Mix by Severity</h3>
+          <ul class="ticket-status-mix-legend" id="statusMixLegend">
+            <li><span class="legend-dot" style="--dot-color: var(--danger)"></span>Severity 1</li>
+            <li><span class="legend-dot" style="--dot-color: var(--warning)"></span>Severity 2</li>
+            <li><span class="legend-dot" style="--dot-color: var(--secondary)"></span>Severity 3</li>
+          </ul>
+        </div>
+        <div class="ticket-combo-chart" id="statusMixChart"></div>
       </div>
 
       <div class="ticket-chart-box ticket-chart-box--sitewise ticket-chart-box--full">
@@ -466,11 +491,16 @@
         el.innerHTML = '<p class="ticket-chart-hint">No data for the current filter selection.</p>';
         return;
       }
-      const W = 640, H = 230;
+      const H = 230;
+      const n = points.length;
+      // Fixed per-week spacing (rather than squeezing every week into a
+      // constant-width box) so a long trend — e.g. the 13-week default —
+      // stays readable; the container scrolls horizontally to reveal the
+      // earlier weeks instead of cramming their dots/labels together.
+      const W = Math.max(640, n * 70);
       const marginTop = 30, marginRight = 16, marginBottom = 30, marginLeft = 16;
       const plotW = W - marginLeft - marginRight;
       const plotH = H - marginTop - marginBottom;
-      const n = points.length;
       const xFor = (i) => marginLeft + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
       const values = points.map((p) => p.count);
       const maxV = Math.max(...values, 1);
@@ -507,7 +537,7 @@
       }).join('');
 
       el.innerHTML = `
-        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Weekly trend chart">
+        <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Weekly trend chart">
           <defs>
             <linearGradient id="${gradientId}" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%" class="ticket-line-grad-start" />
@@ -605,7 +635,7 @@
       }).join('');
 
       el.innerHTML = `
-        <svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Sitewise chart">
+        <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Sitewise chart">
           ${bars}
           ${hasLine ? `<polyline points="${linePts}" class="ticket-combo-line" fill="none" />` : ''}
           ${badges}
@@ -614,33 +644,63 @@
       `;
     }
 
-    const STATUS_COLORS =['#3b82f6', '#f59e0b', '#8b5cf6', '#ef4444', '#10b981', '#06b6d4', '#f97316', '#6366f1'];
+    const SEVERITY_BAR_CLASSES = ['ticket-status-mix-bar--1', 'ticket-status-mix-bar--2', 'ticket-status-mix-bar--3'];
 
-    function renderStatusDonut(statusData) {
-      const pie = document.getElementById('statusPie');
-      const legend = document.getElementById('statusLegend');
-      if (!pie || !legend) return;
-      const total = statusData.reduce((sum, s) => sum + s.count, 0);
-      if (!total) {
-        pie.style.background = 'var(--surface)';
-        legend.innerHTML = '<li class="ticket-status-empty">No open tickets for the current filter selection.</li>';
+    // Grouped bar chart: one group per status bucket (fixed order the
+    // server emits — Pending Confirmation / In-Progress / On Hold, plus any
+    // surprise status the bucketing didn't recognize), 3 bars per group
+    // (Sev 1/2/3) so aging-severity and status mix stay readable side by
+    // side, replacing the old one-pie-per-severity layout.
+    function renderStatusMixChart(bySeverity) {
+      const el = document.getElementById('statusMixChart');
+      if (!el) return;
+      const categories = [];
+      bySeverity.forEach((sev) => sev.status.forEach((s) => {
+        if (!categories.includes(s.status)) categories.push(s.status);
+      }));
+      if (!categories.length) {
+        el.innerHTML = '<p class="ticket-chart-hint">No open tickets for the current filter selection.</p>';
         return;
       }
-      let cursor = 0;
-      const stops = statusData.map((s, i) => {
-        const start = (cursor / total) * 360;
-        cursor += s.count;
-        const end = (cursor / total) * 360;
-        return `${STATUS_COLORS[i % STATUS_COLORS.length]} ${start}deg ${end}deg`;
-      }).join(', ');
-      pie.style.background = `conic-gradient(${stops})`;
-      legend.innerHTML = statusData.map((s, i) => `
-        <li>
-          <span class="legend-dot" style="--dot-color: ${STATUS_COLORS[i % STATUS_COLORS.length]}"></span>
-          ${escapeHtml(s.status)}
-          <span class="legend-count">${formatInt(s.count)}</span>
-        </li>
-      `).join('');
+
+      const countFor = (sev, cat) => sev.status.find((s) => s.status === cat)?.count || 0;
+      const maxCount = Math.max(...bySeverity.flatMap((sev) => sev.status.map((s) => s.count)), 1);
+
+      const barW = 34, barGap = 6, groupGap = 40;
+      const groupW = bySeverity.length * barW + (bySeverity.length - 1) * barGap;
+      const W = Math.max(560, categories.length * (groupW + groupGap));
+      const H = 280;
+      const marginTop = 34, marginRight = 16, marginBottom = 40, marginLeft = 16;
+      const plotW = W - marginLeft - marginRight;
+      const plotH = H - marginTop - marginBottom;
+      const baseline = marginTop + plotH;
+      const catBand = plotW / categories.length;
+
+      function roundedTopRectPath(x, y, w, h, r) {
+        const rr = Math.min(r, w / 2, Math.max(h, 0));
+        return `M${x},${y + h} L${x},${y + rr} Q${x},${y} ${x + rr},${y} L${x + w - rr},${y} Q${x + w},${y} ${x + w},${y + rr} L${x + w},${y + h} Z`;
+      }
+
+      const groups = categories.map((cat, ci) => {
+        const catCenterX = marginLeft + ci * catBand + catBand / 2;
+        const groupStartX = catCenterX - groupW / 2;
+        const bars = bySeverity.map((sev, si) => {
+          const count = countFor(sev, cat);
+          const barH = (count / maxCount) * plotH * 0.82;
+          const x = groupStartX + si * (barW + barGap);
+          const y = baseline - barH;
+          return `<path d="${roundedTopRectPath(x, y, barW, barH, 3)}" class="${SEVERITY_BAR_CLASSES[si]}" />
+                  ${count ? `<text x="${x + barW / 2}" y="${y - 6}" class="ticket-combo-bar-label" text-anchor="middle">${count}</text>` : ''}`;
+        }).join('');
+        const label = cat.length > 24 ? `${cat.slice(0, 23)}…` : cat;
+        return `${bars}<text x="${catCenterX}" y="${baseline + 22}" class="ticket-combo-xtick" text-anchor="middle"><title>${escapeHtml(cat)}</title>${escapeHtml(label)}</text>`;
+      }).join('');
+
+      el.innerHTML = `
+        <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Backlog status mix by severity">
+          ${groups}
+        </svg>
+      `;
     }
 
     let inflowSitewiseData = [];
@@ -661,15 +721,6 @@
     function skeletonChart() {
       return '<div class="skeleton-chart skeleton-shimmer"></div>';
     }
-    function statusSkeletonRows(count) {
-      return Array.from({ length: count }).map(() => `
-        <li aria-hidden="true">
-          <span class="skeleton-dot skeleton-shimmer"></span>
-          <span class="skeleton-bar skeleton-bar--name skeleton-shimmer"></span>
-          <span class="skeleton-bar skeleton-bar--pct skeleton-shimmer"></span>
-        </li>
-      `).join('');
-    }
     function setValuesLoading(ids, isLoading) {
       ids.forEach((id) => document.getElementById(id)?.classList.toggle('is-loading', isLoading));
     }
@@ -682,13 +733,15 @@
       }
     }
 
+    const BACKLOG_SEVERITY_SUFFIXES = ['-1', '-2', '-3'];
+
     function setBacklogLoadingState(isLoading) {
-      setValuesLoading(['backlogHeadlineValue', 'backlogHeadlineBadge', 'slaAchievedValue', 'agingDaysValue'], isLoading);
-      document.getElementById('statusPie').classList.toggle('is-loading', isLoading);
+      setValuesLoading(['backlogHeadlineValue', 'backlogHeadlineBadge', 'slaAchievedValue'], isLoading);
+      setValuesLoading(BACKLOG_SEVERITY_SUFFIXES.map((s) => `agingDaysValue${s}`), isLoading);
       if (isLoading) {
         document.getElementById('backlogTrendChart').innerHTML = skeletonChart();
         document.getElementById('backlogSitewiseChart').innerHTML = skeletonChart();
-        document.getElementById('statusLegend').innerHTML = statusSkeletonRows(4);
+        document.getElementById('statusMixChart').innerHTML = skeletonChart();
       }
     }
 
@@ -732,7 +785,7 @@
         renderTicketLineChart('inflowTrendChart', data.trend);
 
         inflowSitewiseData = data.sitewise.map((s) => ({ name: s.name, count: s.count, lineValue: s.pctChange }));
-        renderTicketComboChart('inflowSitewiseChart', inflowSitewiseData, inflowToggleMode, { n: 8, lineFormat: pctChangeLineFormat });
+        renderTicketComboChart('inflowSitewiseChart', inflowSitewiseData, inflowToggleMode, { n: Infinity, lineFormat: pctChangeLineFormat });
       } catch (err) {
         if (requestId !== inflowRequestId) return;
         setInflowLoadingState(false);
@@ -757,12 +810,15 @@
         renderTicketLineChart('backlogTrendChart', data.trend);
 
         setText('slaAchievedValue', data.sla.pct === null ? 'N/A' : `${data.sla.pct.toFixed(1)}%`);
-        setText('agingDaysValue', data.agingDays === null ? 'N/A' : data.agingDays.toFixed(0));
 
-        renderStatusDonut(data.status);
+        data.bySeverity.forEach((sev, i) => {
+          const suffix = BACKLOG_SEVERITY_SUFFIXES[i];
+          setText(`agingDaysValue${suffix}`, sev.agingDays === null ? 'N/A' : sev.agingDays.toFixed(0));
+        });
+        renderStatusMixChart(data.bySeverity);
 
         backlogSitewiseData = data.sitewise.map((s) => ({ name: s.name, count: s.count, lineValue: s.agingDays }));
-        renderTicketComboChart('backlogSitewiseChart', backlogSitewiseData, backlogToggleMode, { n: 12, lineFormat: agingLineFormat });
+        renderTicketComboChart('backlogSitewiseChart', backlogSitewiseData, backlogToggleMode, { n: Infinity, lineFormat: agingLineFormat });
       } catch (err) {
         if (requestId !== backlogRequestId) return;
         setBacklogLoadingState(false);
@@ -826,7 +882,7 @@
       if (!btn) return;
       inflowToggleMode = btn.getAttribute('data-mode');
       document.querySelectorAll('#inflowToggleGroup .toggle-btn').forEach((b) => b.classList.toggle('is-active', b === btn));
-      renderTicketComboChart('inflowSitewiseChart', inflowSitewiseData, inflowToggleMode, { n: 8, lineFormat: pctChangeLineFormat });
+      renderTicketComboChart('inflowSitewiseChart', inflowSitewiseData, inflowToggleMode, { n: Infinity, lineFormat: pctChangeLineFormat });
     });
 
     document.getElementById('backlogToggleGroup')?.addEventListener('click', (e) => {
@@ -834,7 +890,7 @@
       if (!btn) return;
       backlogToggleMode = btn.getAttribute('data-mode');
       document.querySelectorAll('#backlogToggleGroup .toggle-btn').forEach((b) => b.classList.toggle('is-active', b === btn));
-      renderTicketComboChart('backlogSitewiseChart', backlogSitewiseData, backlogToggleMode, { n: 12, lineFormat: agingLineFormat });
+      renderTicketComboChart('backlogSitewiseChart', backlogSitewiseData, backlogToggleMode, { n: Infinity, lineFormat: agingLineFormat });
     });
 
     loadPods();

@@ -465,20 +465,6 @@ function soqlString(value) {
   return `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 }
 
-/**
- * Ticket Inflow Health data for the Ticket Health page's Ticket Inflow
- * panel, read straight from Salesforce Case — the system these tickets are
- * actually created in — instead of the BigQuery Zendesk mirror the rest of
- * that page uses. In scope: Type = 'Incident' AND Category__c = 'Software',
- * further narrowed by site (Account_Name__c), Product_Type__c, and
- * SLA_Category__c (this panel's own Severity 1-4 tabs) when supplied.
- *
- * `anchor` (YYYY-MM-DD, defaults to today) selects which ISO week is
- * "this week"; the trend covers the `weeks` ISO weeks up to and including it,
- * and the sitewise breakdown compares that week against the one before it —
- * mirroring getTicketInflowData's shape (trend/sitewise/headline/selectedWeek)
- * in bigquery.js so either can back the same panel.
- */
 export async function getTicketInflowHealth({
   anchor = new Date().toISOString().slice(0, 10),
   weeks = TICKET_HEALTH_TREND_WEEKS,
@@ -573,18 +559,29 @@ function istTimestampMs(dateStr, endOfDay = false) {
   return Date.parse(`${dateStr}T${endOfDay ? '23:59:59.999' : '00:00:00'}+05:30`);
 }
 
-// Within-SLA rule for a closed Sev1-3 case, ported from Support Performance
-// KPI.xlsx (Solved_Ticket sheet) via bigquery.js's getTicketBacklogData:
-//   Sev1: resolved <= 60 min
-//   Sev2: resolved <= 60 min if >=50% systems affected, else <= 120 min
-//   Sev3: resolved <= 1440 min (24h)
-// Impact_Percentage__c stands in for "% systems affected" — the same field
-// getTrendData/getTicketHistory already use for that concept.
-function withinBacklogSla(severity, resolutionMin, impactPct) {
-  if (severity === 'Severity 1') return resolutionMin <= 60;
-  if (severity === 'Severity 2') return impactPct >= 50 ? resolutionMin <= 60 : resolutionMin <= 120;
-  if (severity === 'Severity 3') return resolutionMin <= 1440;
+// Within-SLA rule for a Sev1-3 case: a flat resolution-time ceiling per
+// severity, measured from CreatedDate to ClosedDate (or to now, for a case
+// still open) — Sev1 12h, Sev2 24h, Sev3 72h.
+function withinBacklogSla(severity, elapsedMin) {
+  if (severity === 'Severity 1') return elapsedMin <= 720;
+  if (severity === 'Severity 2') return elapsedMin <= 1440;
+  if (severity === 'Severity 3') return elapsedMin <= 4320;
   return false;
+}
+const STATUS_BUCKETS = [
+  { label: 'Pending Confirmation', statuses: ['Pending Confirmation', 'Pending Information'] },
+  { label: 'In-Progress', statuses: ['Assigned', 'In-Progress', 'New'] },
+  { label: 'On Hold', statuses: ['On Hold'] },
+];
+
+function bucketedStatusCounts(records) {
+  const counts = new Map(STATUS_BUCKETS.map((b) => [b.label, 0]));
+  for (const r of records) {
+    const bucket = STATUS_BUCKETS.find((b) => b.statuses.includes(r.status));
+    const label = bucket ? bucket.label : r.status;
+    counts.set(label, (counts.get(label) || 0) + 1);
+  }
+  return [...counts.entries()].map(([status, count]) => ({ status, count }));
 }
 
 /**
@@ -593,13 +590,15 @@ function withinBacklogSla(severity, resolutionMin, impactPct) {
  * Same base scope as getTicketInflowHealth (Type = 'Incident' AND
  * Category__c = 'Software'), narrowed by site (Account_Name__c) and
  * Product_Type__c — no Severity-tab equivalent here: the SLA/Aging tiles
- * are hardcoded to Severity 1-3 regardless of filters, while the trend,
- * Status donut, and sitewise aging breakdown span every severity, matching
- * bigquery.js's shape.
+ * are hardcoded to Severity 1-3 regardless of filters, while the trend and
+ * sitewise aging breakdown span every severity, matching bigquery.js's
+ * shape.
  *
  * `anchor`/`weeks` behave like getTicketInflowHealth's: `anchor` selects
  * "this week" for the trend/SLA window, while Status/Aging/Sitewise-aging
  * always reflect *now* (Case's live IsClosed/Status), not the selected week.
+ * Aging and Status are broken out per Severity 1/2/3 (`bySeverity`) — no
+ * Severity-tab equivalent needed since it's always all three, split out.
  */
 export async function getTicketBacklogHealth({
   anchor = new Date().toISOString().slice(0, 10),
@@ -622,7 +621,7 @@ export async function getTicketBacklogHealth({
 
   const soql =
     `SELECT CreatedDate, ClosedDate, IsClosed, Status, SLA_Category__c, ` +
-    `Impact_Percentage__c, Account_Name__c FROM Case WHERE ${clauses.join(' AND ')}`;
+    `Account_Name__c FROM Case WHERE ${clauses.join(' AND ')}`;
 
   let records = [];
   let nextPath = `/services/data/${SF_API_VERSION}/query?q=${encodeURIComponent(soql)}`;
@@ -638,9 +637,9 @@ export async function getTicketBacklogHealth({
     isClosed: Boolean(r.IsClosed),
     status: r.Status || 'Unknown',
     severity: r.SLA_Category__c,
-    impact: typeof r.Impact_Percentage__c === 'number' ? r.Impact_Percentage__c : null,
     site: r.Account_Name__c,
   }));
+  const nowMs = Date.now();
 
   const openAsOf = (rec, ts) => rec.createdMs <= ts && (rec.closedMs === null || rec.closedMs > ts);
 
@@ -659,34 +658,36 @@ export async function getTicketBacklogHealth({
   const overallCount = trend.length ? trend[trend.length - 1].count : 0;
   const prevOverall = trend.length >= 2 ? trend[trend.length - 2].count : 0;
 
-  // SLA Achieved % (Sev 1-3): of cases closed within the anchor week.
+  // SLA Achieved % (Sev 1-3): % of *ticket IDs* raised within the anchor
+  // week that stayed within their flat resolution SLA, not just the ones
+  // that happen to have closed already — an open case counts against the
+  // total from the moment it's raised, measured by elapsed time so far
+  // (CreatedDate to now) until it closes (CreatedDate to ClosedDate).
   const weekStartTs = istTimestampMs(anchorWeek.start, false);
   const weekEndTs = istTimestampMs(anchorWeek.end, true);
   let slaWithin = 0;
   let slaTotal = 0;
   for (const r of parsed) {
     if (!BACKLOG_SLA_AGING_SEVERITIES.has(r.severity)) continue;
-    if (r.closedMs === null || r.closedMs < weekStartTs || r.closedMs > weekEndTs) continue;
+    if (r.createdMs < weekStartTs || r.createdMs > weekEndTs) continue;
     slaTotal += 1;
-    const resolutionMin = (r.closedMs - r.createdMs) / 60000;
-    if (withinBacklogSla(r.severity, resolutionMin, r.impact)) slaWithin += 1;
+    const elapsedMin = ((r.isClosed ? r.closedMs : nowMs) - r.createdMs) / 60000;
+    if (withinBacklogSla(r.severity, elapsedMin)) slaWithin += 1;
   }
 
-  // Aging (Sev 1-3) + Status + Sitewise BL aging all read the case's
-  // *current* IsClosed/Status (fetched live) rather than the selected week.
+  // Aging + Status (both now per Severity 1/2/3) + Sitewise BL aging all
+  // read the case's *current* IsClosed/Status (fetched live) rather than
+  // the selected week.
   const openNow = parsed.filter((r) => !r.isClosed);
-  const nowMs = Date.now();
 
-  const openSev123 = openNow.filter((r) => BACKLOG_SLA_AGING_SEVERITIES.has(r.severity));
-  const agingDays = openSev123.length
-    ? openSev123.reduce((sum, r) => sum + (nowMs - r.createdMs), 0) / openSev123.length / 86400000
-    : null;
-
-  const statusCounts = new Map();
-  for (const r of openNow) statusCounts.set(r.status, (statusCounts.get(r.status) || 0) + 1);
-  const status = [...statusCounts.entries()]
-    .map(([s, count]) => ({ status: s, count }))
-    .sort((a, b) => b.count - a.count);
+  const bySeverity = [...BACKLOG_SLA_AGING_SEVERITIES].map((sev) => {
+    const recs = openNow.filter((r) => r.severity === sev);
+    const agingDays = recs.length
+      ? recs.reduce((sum, r) => sum + (nowMs - r.createdMs), 0) / recs.length / 86400000
+      : null;
+    const status = bucketedStatusCounts(recs);
+    return { severity: sev, count: recs.length, agingDays, status };
+  });
 
   const siteAgg = new Map(); // site -> { count, totalAgeMs }
   for (const r of openNow) {
@@ -705,10 +706,9 @@ export async function getTicketBacklogHealth({
   return {
     trend,
     sitewise,
-    status,
+    bySeverity,
     headline: { count: overallCount, wowPct: wowPctChange(overallCount, prevOverall) },
     sla: { pct: slaTotal > 0 ? (slaWithin / slaTotal) * 100 : null, within: slaWithin, total: slaTotal },
-    agingDays,
     selectedWeek: { year: anchorWeek.year, week: anchorWeek.week, start: anchorWeek.start, end: anchorWeek.end },
   };
 }
@@ -724,11 +724,11 @@ export async function getTicketBacklogHealth({
 
 const RESOLUTION_SEVERITIES = ['Severity 1', 'Severity 2'];
 
-// Both Sev1 and Sev2 collapse to the same 60-minute bar here: every ticket in
-// this scope already clears the >=50% impact threshold that pushes Sev2's own
-// threshold down to 60 min in withinBacklogSla.
-function withinResolutionSla(resolutionMin) {
-  return resolutionMin <= 60;
+// Sev1 is a flat 60-minute bar; Sev2 gets 120 min here since this scope
+// (Impact_Percentage__c >= 50) always clears the >50% threshold that pushes
+// Sev2's own bar up to 120 min in withinBacklogSla.
+function withinResolutionSla(severity, resolutionMin) {
+  return severity === 'Severity 2' ? resolutionMin <= 120 : resolutionMin <= 60;
 }
 
 /**
@@ -811,7 +811,7 @@ export async function getTicketResolutionHealth({
     ? thisWeekRecords.reduce((sum, r) => sum + hoursOf(r), 0) / thisWeekRecords.length
     : null;
 
-  const slaWithin = thisWeekRecords.filter((r) => withinResolutionSla(hoursOf(r) * 60)).length;
+  const slaWithin = thisWeekRecords.filter((r) => withinResolutionSla(r.severity, hoursOf(r) * 60)).length;
   const slaPct = thisWeekRecords.length ? (slaWithin / thisWeekRecords.length) * 100 : null;
 
   // MTTR by SLA Category and the sitewise breakdown both aggregate across the
