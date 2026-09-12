@@ -36,10 +36,34 @@
         <span class="env-dot" aria-hidden="true"></span>
         Production
       </span>
+      <form method="post" action="/api/ticket-health/logout">
+        <button type="submit" class="page-nav-link" style="background:none;border:none;cursor:pointer;font:inherit;">Log out</button>
+      </form>
     </div>
   </header>
 
   <main class="shell">
+    <nav class="section-nav" aria-label="Jump to section">
+      <div class="section-nav-links">
+        <a href="#execSummary" class="section-nav-link">Summary</a>
+        <a href="#inflowSection" class="section-nav-link">Inflow</a>
+        <a href="#backlogSection" class="section-nav-link">Backlog</a>
+        <a href="#resolutionSection" class="section-nav-link">Resolution &middot; Sev 1&amp;2</a>
+        <a href="#resolutionSev3Section" class="section-nav-link">Resolution &middot; Sev 3</a>
+      </div>
+      <button type="button" class="glossary-toggle" id="glossaryToggle" aria-expanded="false" aria-controls="glossaryPanel">
+        <span aria-hidden="true">?</span> What do these terms mean?
+      </button>
+    </nav>
+    <dl class="glossary-panel" id="glossaryPanel" hidden>
+      <div class="glossary-item"><dt>SLA</dt><dd>Service Level Agreement — the target time to resolve a ticket, based on severity.</dd></div>
+      <div class="glossary-item"><dt>MTTR</dt><dd>Mean Time To Resolve — the average hours from a ticket being raised to being closed.</dd></div>
+      <div class="glossary-item"><dt>Aging</dt><dd>How many days a still-open ticket has been sitting, on average.</dd></div>
+      <div class="glossary-item"><dt>WoW</dt><dd>Week-over-week — the change versus the previous week.</dd></div>
+      <div class="glossary-item"><dt>Impact &geq;50%</dt><dd>Ticket is flagged as affecting half or more of a site's operation.</dd></div>
+      <div class="glossary-item"><dt>POD</dt><dd>The support team/pod assigned to a group of sites.</dd></div>
+    </dl>
+
     <section class="filter-bar" aria-label="Ticket health filters">
       <div class="filter-toolbar">
         <div class="filter-toolbar-status">
@@ -98,7 +122,73 @@
       </div>
     </section>
 
-    <section class="ticket-inflow-section" aria-label="Ticket inflow health">
+    <section class="exec-summary-section" id="execSummary" aria-label="Executive summary">
+      <div class="exec-summary-head">
+        <h2 class="exec-summary-title">This Week at a Glance</h2>
+        <p class="exec-summary-sub" id="execSummaryWeek">&mdash;</p>
+      </div>
+      <div class="exec-summary-grid">
+        <div class="exec-tile-wrap">
+          <p class="exec-tile-caption">New tickets opened this week vs. last week — a rising trend is worse.</p>
+          <div class="exec-tile" id="execTileInflow">
+            <span class="exec-tile-label">
+              <span class="ticket-kpi-label-row">New Tickets<button type="button" class="kpi-info-icon" data-tooltip="New tickets raised this week (all severities, current filter selection) vs. last week (WoW). More tickets inflowing is worse, so an increase is flagged red and a decrease green." aria-label="How New Tickets is calculated">?</button></span>
+              <span class="exec-tile-label-sub">Inflow, this week</span>
+            </span>
+            <span class="exec-tile-value" id="execInflowValue">&mdash;</span>
+            <span class="exec-tile-delta" id="execInflowDelta">&mdash;</span>
+          </div>
+        </div>
+        <div class="exec-tile-wrap">
+          <p class="exec-tile-caption">Tickets still open right now vs. last week — a rising trend is worse.</p>
+          <div class="exec-tile" id="execTileBacklog">
+            <span class="exec-tile-label">
+              <span class="ticket-kpi-label-row">Open Backlog<button type="button" class="kpi-info-icon" data-tooltip="Tickets still open right now (all severities, current filter selection) vs. last week's open count (WoW). A growing backlog is flagged red; a shrinking one, green." aria-label="How Open Backlog is calculated">?</button></span>
+              <span class="exec-tile-label-sub">All severities</span>
+            </span>
+            <span class="exec-tile-value" id="execBacklogValue">&mdash;</span>
+            <span class="exec-tile-delta" id="execBacklogDelta">&mdash;</span>
+          </div>
+        </div>
+        <div class="exec-tile-wrap">
+          <p class="exec-tile-caption">Tickets fully resolved this week, new and backlog combined — a rising trend is better.</p>
+          <div class="exec-tile" id="execTileResolved">
+            <span class="exec-tile-label">
+              <span class="ticket-kpi-label-row">Total Resolved<button type="button" class="kpi-info-icon" data-tooltip="Tickets closed this week across all severities, whether they were newly raised this week or carried over from the backlog, vs. last week (WoW). More resolved is better, so an increase is flagged green and a decrease red." aria-label="How Total Resolved is calculated">?</button></span>
+              <span class="exec-tile-label-sub">New + Backlog closed</span>
+            </span>
+            <span class="exec-tile-value" id="execResolvedValue">&mdash;</span>
+            <span class="exec-tile-delta" id="execResolvedDelta">&mdash;</span>
+          </div>
+        </div>
+        <div class="exec-tile-wrap">
+          <p class="exec-tile-caption">Share of critical tickets fixed within their promised time — higher is better.</p>
+          <div class="exec-tile exec-tile--clickable" id="execTileSla" role="button" tabindex="0" aria-label="View closed tickets behind this SLA Adherence figure">
+            <span class="exec-tile-label">
+              <span class="ticket-kpi-label-row">SLA Adherence<button type="button" class="kpi-info-icon" data-tooltip="% of Sev 1 &amp; 2 tickets (Impact >=50%) closed this week that were resolved within SLA — Sev 1: 60 min, Sev 2: 120 min — measured from creation to close. 95%+ is green, 85–94% is amber, below 85% is red." aria-label="How SLA Adherence is calculated">?</button></span>
+              <span class="exec-tile-label-sub">Sev 1&amp;2, Impact&geq;50%</span>
+            </span>
+            <span class="exec-tile-value" id="execSlaValue">&mdash;</span>
+            <span class="exec-tile-delta" id="execSlaDelta">&mdash;</span>
+            <span class="ticket-kpi-tile-hint">View tickets &rsaquo;</span>
+          </div>
+        </div>
+        <div class="exec-tile-wrap">
+          <p class="exec-tile-caption">Average hours to fully resolve a critical ticket, start to finish.</p>
+          <div class="exec-tile" id="execTileMttr">
+            <span class="exec-tile-label">
+              <span class="ticket-kpi-label-row">MTTR<button type="button" class="kpi-info-icon" data-tooltip="Average resolution time, in hours, for Sev 1 &amp; 2 tickets (Impact >=50%) closed this week, measured from creation to close." aria-label="How MTTR is calculated">?</button></span>
+              <span class="exec-tile-label-sub">Sev 1&amp;2, hours to resolve</span>
+            </span>
+            <span class="exec-tile-value" id="execMttrValue">&mdash;</span>
+            <span class="exec-tile-delta" id="execMttrDelta">&mdash;</span>
+          </div>
+        </div>
+      </div>
+      <p class="exec-insight" id="execInsight" hidden></p>
+    </section>
+
+    <section class="ticket-inflow-section" id="inflowSection" aria-label="Ticket inflow health">
       <div class="ticket-section-header">
         <h2 class="ticket-section-title">Ticket Inflow Health</h2>
         <p class="ticket-section-sub">New tickets raised this week, week-over-week change, and where they're coming from &middot; filter by severity below</p>
@@ -127,18 +217,22 @@
 
         <div class="ticket-chart-box ticket-chart-box--sitewise">
           <div class="ticket-sitewise-head">
-            <h3 class="ticket-chart-title">Sitewise Ticket Inflow vs % Change</h3>
+            <h3 class="ticket-chart-title">Sitewise Ticket Inflow vs % Change <span class="ticket-scroll-hint"><svg class="ticket-scroll-hint-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="8 7 3 12 8 17"></polyline><polyline points="16 7 21 12 16 17"></polyline></svg>scroll to see all sites</span></h3>
             <div class="toggle-btn-group" id="inflowToggleGroup">
               <button type="button" class="toggle-btn is-active" data-mode="top">Top</button>
               <button type="button" class="toggle-btn" data-mode="bottom">Bottom</button>
             </div>
           </div>
-          <div class="ticket-combo-chart" id="inflowSitewiseChart"></div>
+          <div class="ticket-scroll-wrap">
+            <button type="button" class="ticket-scroll-btn ticket-scroll-btn--left" data-scroll-target="inflowSitewiseChart" aria-label="Scroll left">&lsaquo;</button>
+            <div class="ticket-combo-chart" id="inflowSitewiseChart"></div>
+            <button type="button" class="ticket-scroll-btn ticket-scroll-btn--right" data-scroll-target="inflowSitewiseChart" aria-label="Scroll right">&rsaquo;</button>
+          </div>
         </div>
       </div>
     </section>
 
-    <section class="ticket-backlog-section" aria-label="Ticket backlog health">
+    <section class="ticket-backlog-section" id="backlogSection" aria-label="Ticket backlog health">
       <div class="ticket-section-header">
         <h2 class="ticket-section-title">Ticket Backlog Health</h2>
         <p class="ticket-section-sub">Open ticket volume, SLA achievement, aging, and status mix &middot; sitewise aging analysis below</p>
@@ -154,9 +248,28 @@
           <div class="ticket-line-chart" id="backlogTrendChart"></div>
         </div>
 
-        <div class="ticket-kpi-tile ticket-kpi-tile--sla">
-          <span class="ticket-kpi-label">SLA Achieved %<em>(Sev 1,2,3)</em></span>
-          <span class="ticket-kpi-value" id="slaAchievedValue">&mdash;</span>
+        <div class="ticket-sla-severity-stack">
+          <div class="ticket-kpi-tile ticket-kpi-tile--sla ticket-kpi-tile--compact" id="slaTile-1">
+            <span class="ticket-kpi-label">
+              <span class="ticket-kpi-label-row">SLA Achieved %<button type="button" class="kpi-info-icon" data-tooltip="% of Severity 1 tickets raised this week that stayed within the 12h resolution SLA, measured from creation to close (or to now, if still open)." aria-label="How SLA Achieved % is calculated for Severity 1">?</button></span>
+              <em>Sev 1</em>
+            </span>
+            <span class="ticket-kpi-value" id="slaAchievedValue-1">&mdash;</span>
+          </div>
+          <div class="ticket-kpi-tile ticket-kpi-tile--sla ticket-kpi-tile--compact" id="slaTile-2">
+            <span class="ticket-kpi-label">
+              <span class="ticket-kpi-label-row">SLA Achieved %<button type="button" class="kpi-info-icon" data-tooltip="% of Severity 2 tickets raised this week that stayed within the 24h resolution SLA, measured from creation to close (or to now, if still open)." aria-label="How SLA Achieved % is calculated for Severity 2">?</button></span>
+              <em>Sev 2</em>
+            </span>
+            <span class="ticket-kpi-value" id="slaAchievedValue-2">&mdash;</span>
+          </div>
+          <div class="ticket-kpi-tile ticket-kpi-tile--sla ticket-kpi-tile--compact" id="slaTile-3">
+            <span class="ticket-kpi-label">
+              <span class="ticket-kpi-label-row">SLA Achieved %<button type="button" class="kpi-info-icon" data-tooltip="% of Severity 3 tickets raised this week that stayed within the 72h resolution SLA, measured from creation to close (or to now, if still open)." aria-label="How SLA Achieved % is calculated for Severity 3">?</button></span>
+              <em>Sev 3</em>
+            </span>
+            <span class="ticket-kpi-value" id="slaAchievedValue-3">&mdash;</span>
+          </div>
         </div>
       </div>
 
@@ -164,7 +277,9 @@
         <div class="ticket-severity-card ticket-severity-card--1">
           <h3 class="ticket-chart-title">Severity 1</h3>
           <div class="ticket-kpi-tile ticket-kpi-tile--aging ticket-kpi-tile--compact">
-            <span class="ticket-kpi-label">Avg. Aging (Days)</span>
+            <span class="ticket-kpi-label">
+              <span class="ticket-kpi-label-row">Avg. Aging (Days)<button type="button" class="kpi-info-icon" data-tooltip="Average age, in days, of all currently open Severity 1 tickets — time elapsed since creation to now, averaged across all open Sev 1 tickets." aria-label="How Avg. Aging (Days) is calculated for Severity 1">?</button></span>
+            </span>
             <span class="ticket-kpi-value" id="agingDaysValue-1">&mdash;</span>
           </div>
         </div>
@@ -172,7 +287,9 @@
         <div class="ticket-severity-card ticket-severity-card--2">
           <h3 class="ticket-chart-title">Severity 2</h3>
           <div class="ticket-kpi-tile ticket-kpi-tile--aging ticket-kpi-tile--compact">
-            <span class="ticket-kpi-label">Avg. Aging (Days)</span>
+            <span class="ticket-kpi-label">
+              <span class="ticket-kpi-label-row">Avg. Aging (Days)<button type="button" class="kpi-info-icon" data-tooltip="Average age, in days, of all currently open Severity 2 tickets — time elapsed since creation to now, averaged across all open Sev 2 tickets." aria-label="How Avg. Aging (Days) is calculated for Severity 2">?</button></span>
+            </span>
             <span class="ticket-kpi-value" id="agingDaysValue-2">&mdash;</span>
           </div>
         </div>
@@ -180,7 +297,9 @@
         <div class="ticket-severity-card ticket-severity-card--3">
           <h3 class="ticket-chart-title">Severity 3</h3>
           <div class="ticket-kpi-tile ticket-kpi-tile--aging ticket-kpi-tile--compact">
-            <span class="ticket-kpi-label">Avg. Aging (Days)</span>
+            <span class="ticket-kpi-label">
+              <span class="ticket-kpi-label-row">Avg. Aging (Days)<button type="button" class="kpi-info-icon" data-tooltip="Average age, in days, of all currently open Severity 3 tickets — time elapsed since creation to now, averaged across all open Sev 3 tickets." aria-label="How Avg. Aging (Days) is calculated for Severity 3">?</button></span>
+            </span>
             <span class="ticket-kpi-value" id="agingDaysValue-3">&mdash;</span>
           </div>
         </div>
@@ -188,29 +307,36 @@
 
       <div class="ticket-chart-box ticket-chart-box--full">
         <div class="ticket-sitewise-head">
-          <h3 class="ticket-chart-title">Backlog Status Mix by Severity</h3>
+          <h3 class="ticket-chart-title">Backlog Status Mix by Site <span class="ticket-scroll-hint"><svg class="ticket-scroll-hint-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="8 7 3 12 8 17"></polyline><polyline points="16 7 21 12 16 17"></polyline></svg>scroll to see all sites</span></h3>
           <ul class="ticket-status-mix-legend" id="statusMixLegend">
-            <li><span class="legend-dot" style="--dot-color: var(--danger)"></span>Severity 1</li>
-            <li><span class="legend-dot" style="--dot-color: var(--warning)"></span>Severity 2</li>
-            <li><span class="legend-dot" style="--dot-color: var(--secondary)"></span>Severity 3</li>
+            <li><span class="legend-dot" style="--dot-color: var(--warning)"></span>In-Progress</li>
+            <li><span class="legend-dot" style="--dot-color: var(--secondary)"></span>On Hold</li>
           </ul>
         </div>
-        <div class="ticket-combo-chart" id="statusMixChart"></div>
+        <div class="ticket-scroll-wrap">
+          <button type="button" class="ticket-scroll-btn ticket-scroll-btn--left" data-scroll-target="statusMixChart" aria-label="Scroll left">&lsaquo;</button>
+          <div class="ticket-combo-chart" id="statusMixChart"></div>
+          <button type="button" class="ticket-scroll-btn ticket-scroll-btn--right" data-scroll-target="statusMixChart" aria-label="Scroll right">&rsaquo;</button>
+        </div>
       </div>
 
       <div class="ticket-chart-box ticket-chart-box--sitewise ticket-chart-box--full">
         <div class="ticket-sitewise-head">
-          <h3 class="ticket-chart-title">Overall Tickets BL Aging Analysis Top/Bottom Sites</h3>
+          <h3 class="ticket-chart-title">Overall Tickets BL Aging Analysis Top/Bottom Sites <button type="button" class="kpi-info-icon" data-tooltip="The purple bars are each site's open backlog count. The red dashed line and day badge (e.g. 60d) show that site's average backlog aging — how many days, on average, its currently open backlog tickets have been sitting since they were created. Higher = tickets stuck longer. Click a badge for a per-site breakdown." aria-label="How backlog aging is calculated">?</button> <span class="ticket-scroll-hint"><svg class="ticket-scroll-hint-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="8 7 3 12 8 17"></polyline><polyline points="16 7 21 12 16 17"></polyline></svg>scroll to see all sites</span></h3>
           <div class="toggle-btn-group" id="backlogToggleGroup">
             <button type="button" class="toggle-btn is-active" data-mode="top">Top</button>
             <button type="button" class="toggle-btn" data-mode="bottom">Bottom</button>
           </div>
         </div>
-        <div class="ticket-combo-chart" id="backlogSitewiseChart"></div>
+        <div class="ticket-scroll-wrap">
+          <button type="button" class="ticket-scroll-btn ticket-scroll-btn--left" data-scroll-target="backlogSitewiseChart" aria-label="Scroll left">&lsaquo;</button>
+          <div class="ticket-combo-chart" id="backlogSitewiseChart"></div>
+          <button type="button" class="ticket-scroll-btn ticket-scroll-btn--right" data-scroll-target="backlogSitewiseChart" aria-label="Scroll right">&rsaquo;</button>
+        </div>
       </div>
     </section>
 
-    <section class="ticket-resolution-section" aria-label="Ticket resolution health">
+    <section class="ticket-resolution-section" id="resolutionSection" aria-label="Ticket resolution health">
       <div class="ticket-section-header">
         <h2 class="ticket-section-title">Ticket Resolution Health</h2>
         <p class="ticket-section-sub">Sev 1 &amp; 2 &middot; Impact &geq;50% &middot; how many get solved each week and how long it takes</p>
@@ -231,12 +357,18 @@
         </div>
 
         <div class="ticket-kpi-row">
-          <div class="ticket-kpi-tile ticket-kpi-tile--sla">
-            <span class="ticket-kpi-label">SLA Adherence<em>(Sev 1,2 &middot; Impact &geq;50%)</em></span>
+          <div class="ticket-kpi-tile ticket-kpi-tile--sla ticket-kpi-tile--clickable" id="resolutionSlaTile" role="button" tabindex="0" aria-label="View closed tickets behind this SLA Adherence figure">
+            <span class="ticket-kpi-label">
+              <span class="ticket-kpi-label-row">SLA Adherence<button type="button" class="kpi-info-icon" data-tooltip="% of Sev 1 &amp; 2 tickets (Impact >=50%) closed this week that were resolved within SLA — Sev 1: 60 min, Sev 2: 120 min — measured from creation to close." aria-label="How SLA Adherence is calculated for Sev 1 &amp; 2">?</button></span>
+              <em>(Sev 1,2 &middot; Impact &geq;50%)</em>
+            </span>
             <span class="ticket-kpi-value" id="resolutionSlaValue">&mdash;</span>
+            <span class="ticket-kpi-tile-hint">View tickets &rsaquo;</span>
           </div>
           <div class="ticket-kpi-tile ticket-kpi-tile--aging">
-            <span class="ticket-kpi-label">MTTR (Hours)</span>
+            <span class="ticket-kpi-label">
+              <span class="ticket-kpi-label-row">MTTR (Hours)<button type="button" class="kpi-info-icon" data-tooltip="Average resolution time, in hours, for Sev 1 &amp; 2 tickets (Impact >=50%) closed this week, measured from creation to close." aria-label="How MTTR (Hours) is calculated for Sev 1 &amp; 2">?</button></span>
+            </span>
             <span class="ticket-kpi-value" id="resolutionMttrValue">&mdash;</span>
           </div>
         </div>
@@ -247,13 +379,81 @@
         </div>
 
         <div class="ticket-chart-box ticket-chart-box--sitewise">
-          <h3 class="ticket-chart-title">Resolution Analysis Top Sites</h3>
-          <div class="ticket-combo-chart" id="resolutionSitewiseChart"></div>
+          <h3 class="ticket-chart-title">Resolution Analysis Top Sites <span class="ticket-scroll-hint"><svg class="ticket-scroll-hint-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="8 7 3 12 8 17"></polyline><polyline points="16 7 21 12 16 17"></polyline></svg>scroll to see all sites</span></h3>
+          <div class="ticket-scroll-wrap">
+            <button type="button" class="ticket-scroll-btn ticket-scroll-btn--left" data-scroll-target="resolutionSitewiseChart" aria-label="Scroll left">&lsaquo;</button>
+            <div class="ticket-combo-chart" id="resolutionSitewiseChart"></div>
+            <button type="button" class="ticket-scroll-btn ticket-scroll-btn--right" data-scroll-target="resolutionSitewiseChart" aria-label="Scroll right">&rsaquo;</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="ticket-resolution-section" id="resolutionSev3Section" aria-label="Ticket resolution health, severity 3">
+      <div class="ticket-section-header">
+        <h2 class="ticket-section-title">Ticket Resolution Health &middot; Sev 3</h2>
+        <p class="ticket-section-sub">Sev 2 (Impact &lt;50%) &amp; Sev 3   &middot; how many get solved each week and how long it takes</p>
+      </div>
+
+      <div class="ticket-resolution-body">
+        <div class="ticket-chart-box ticket-chart-box--resolution">
+          <h3 class="ticket-chart-title">Solved Tickets</h3>
+          <div class="ticket-headline-row">
+            <span class="ticket-headline-value" id="resolutionSev3HeadlineValue">&mdash;</span>
+            <span class="ticket-headline-badge" id="resolutionSev3HeadlineBadge">&mdash;</span>
+            <span class="ticket-headline-ma">
+              <span class="ticket-headline-ma-label">Prev. 4-Wk. MA</span>
+              <span class="ticket-headline-ma-value" id="resolutionSev3HeadlineMa">&mdash;</span>
+            </span>
+          </div>
+          <div class="ticket-line-chart" id="resolutionSev3TrendChart"></div>
+        </div>
+
+        <div class="ticket-kpi-row">
+          <div class="ticket-kpi-tile ticket-kpi-tile--sla ticket-kpi-tile--clickable" id="resolutionSev3SlaTile" role="button" tabindex="0" aria-label="View closed tickets behind this SLA Adherence figure">
+            <span class="ticket-kpi-label">
+              <span class="ticket-kpi-label-row">SLA Adherence<button type="button" class="kpi-info-icon" data-tooltip="% of Sev 3 tickets, and Sev 2 tickets with Impact <50%, closed this week that were resolved within SLA — Sev 2: 24h, Sev 3: 72h — measured from creation to close." aria-label="How SLA Adherence is calculated for Sev 2 (Impact <50%) &amp; Sev 3">?</button></span>
+              <em>(Sev 2 &lt;50%: 24h &middot; Sev 3: 72h)</em>
+            </span>
+            <span class="ticket-kpi-value" id="resolutionSev3SlaValue">&mdash;</span>
+            <span class="ticket-kpi-tile-hint">View tickets &rsaquo;</span>
+          </div>
+          <div class="ticket-kpi-tile ticket-kpi-tile--aging">
+            <span class="ticket-kpi-label">
+              <span class="ticket-kpi-label-row">MTTR (Hours)<button type="button" class="kpi-info-icon" data-tooltip="Average resolution time, in hours, for Sev 3 tickets and Sev 2 tickets with Impact <50%, closed this week, measured from creation to close." aria-label="How MTTR (Hours) is calculated for Sev 2 (Impact <50%) &amp; Sev 3">?</button></span>
+            </span>
+            <span class="ticket-kpi-value" id="resolutionSev3MttrValue">&mdash;</span>
+          </div>
+        </div>
+
+        <div class="ticket-chart-box ticket-chart-box--mttr-category">
+          <h3 class="ticket-chart-title">MTTR (Hours) by SLA Category</h3>
+          <div class="ticket-combo-chart" id="resolutionSev3MttrCategoryChart"></div>
+        </div>
+
+        <div class="ticket-chart-box ticket-chart-box--sitewise">
+          <h3 class="ticket-chart-title">Resolution Analysis Top Sites <span class="ticket-scroll-hint"><svg class="ticket-scroll-hint-icon" viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="8 7 3 12 8 17"></polyline><polyline points="16 7 21 12 16 17"></polyline></svg>scroll to see all sites</span></h3>
+          <div class="ticket-scroll-wrap">
+            <button type="button" class="ticket-scroll-btn ticket-scroll-btn--left" data-scroll-target="resolutionSev3SitewiseChart" aria-label="Scroll left">&lsaquo;</button>
+            <div class="ticket-combo-chart" id="resolutionSev3SitewiseChart"></div>
+            <button type="button" class="ticket-scroll-btn ticket-scroll-btn--right" data-scroll-target="resolutionSev3SitewiseChart" aria-label="Scroll right">&rsaquo;</button>
+          </div>
         </div>
       </div>
     </section>
 
   </main>
+
+  <div id="slaTicketsModal" class="trend-modal" hidden>
+    <div class="trend-modal-backdrop" id="slaTicketsModalBackdrop"></div>
+    <div class="trend-modal-panel sla-tickets-modal-panel">
+      <div class="trend-modal-hd">
+        <h3 id="slaTicketsModalTitle">Closed Tickets</h3>
+        <button class="trend-modal-close" id="slaTicketsModalClose" aria-label="Close">&times;</button>
+      </div>
+      <div class="trend-modal-body" id="slaTicketsModalBody"></div>
+    </div>
+  </div>
 
   <script>
     // ---- Filter bar: active-filter summary + clear all ----
@@ -344,6 +544,45 @@
       updateSummary();
     })();
 
+    // ---- Sitewise chart scroll arrows: the combo charts render wider than
+    // their box (one bar/point per site) and scroll horizontally. A
+    // MutationObserver keeps the enabled/disabled state in sync since each
+    // chart's content (and therefore its scrollWidth) is replaced whenever
+    // the underlying data reloads. ----
+    (function setupSitewiseScrollButtons() {
+      const wraps = new Map();
+
+      document.querySelectorAll('.ticket-scroll-btn').forEach((btn) => {
+        const targetId = btn.getAttribute('data-scroll-target');
+        const container = document.getElementById(targetId);
+        if (!container) return;
+
+        if (!wraps.has(targetId)) wraps.set(targetId, { el: container, left: null, right: null });
+        const entry = wraps.get(targetId);
+        const isLeft = btn.classList.contains('ticket-scroll-btn--left');
+        entry[isLeft ? 'left' : 'right'] = btn;
+
+        btn.addEventListener('click', () => {
+          container.scrollBy({ left: (isLeft ? -1 : 1) * container.clientWidth * 0.7, behavior: 'smooth' });
+        });
+      });
+
+      function updateState({ el, left, right }) {
+        const maxScroll = el.scrollWidth - el.clientWidth;
+        const scrollable = maxScroll > 4;
+        if (left) left.disabled = !scrollable || el.scrollLeft <= 2;
+        if (right) right.disabled = !scrollable || el.scrollLeft >= maxScroll - 2;
+      }
+
+      wraps.forEach((entry) => {
+        updateState(entry);
+        entry.el.addEventListener('scroll', () => updateState(entry), { passive: true });
+        new MutationObserver(() => updateState(entry)).observe(entry.el, { childList: true, subtree: true });
+      });
+
+      window.addEventListener('resize', () => wraps.forEach(updateState));
+    })();
+
     // ---- Select Week / Site dropdowns, populated from the live BigQuery
     // catalog so they never drift from what's actually queryable. ----
     async function populateStabilityFilterOptions() {
@@ -360,7 +599,12 @@
         });
         weekSel.innerHTML = `<option value="">Latest week</option>${weekOptions.join('')}`;
 
-        const siteOptions = (json.sites || []).map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`);
+        // gStore sites are a different product line from the Software
+        // incidents this page tracks, so they're dropped from the Site
+        // filter here (Ticket Health-only — the shared catalog still lists
+        // them for Software Stability).
+        const sites = (json.sites || []).filter((s) => !/gstore/i.test(s));
+        const siteOptions = sites.map((s) => `<option value="${escapeHtml(s)}">${escapeHtml(s)}</option>`);
         siteSel.innerHTML = `<option value="">All</option>${siteOptions.join('')}`;
       } catch (err) {
         console.error('Failed to load Week/Site filter options:', err);
@@ -393,6 +637,39 @@
     function activeChipValues(row) {
       if (!row) return [];
       return [...row.querySelectorAll('.filter-chip.is-active')].map((b) => b.getAttribute('data-value'));
+    }
+
+    // ---- Section jump nav + glossary popover (leadership-facing terms like
+    // SLA/MTTR/POD/Impact% are otherwise only explained via hover tooltips). ----
+    (function setupGlossaryToggle() {
+      const btn = document.getElementById('glossaryToggle');
+      const panel = document.getElementById('glossaryPanel');
+      if (!btn || !panel) return;
+      btn.addEventListener('click', () => {
+        const expanded = btn.getAttribute('aria-expanded') === 'true';
+        btn.setAttribute('aria-expanded', String(!expanded));
+        panel.hidden = expanded;
+      });
+    })();
+
+    // ---- RAG (red/amber/green) coloring, applied consistently to every KPI
+    // tile that has a clear target — a tile's border/value color always
+    // reflects whether *this* number is good or bad, not just its category. ----
+    function setRag(tileId, level) {
+      const tile = document.getElementById(tileId);
+      if (tile) tile.setAttribute('data-rag', level || '');
+    }
+    // 95%/85% is a standard SLA-attainment banding, not a value pulled from
+    // this data set — tune to the org's actual targets if those differ.
+    function ragForSlaPct(pct) {
+      if (typeof pct !== 'number' || Number.isNaN(pct)) return '';
+      if (pct >= 95) return 'good';
+      if (pct >= 85) return 'warn';
+      return 'bad';
+    }
+    function ragForTrend(pct) {
+      if (typeof pct !== 'number' || Number.isNaN(pct) || pct === 0) return '';
+      return pct > 0 ? 'bad' : 'good';
     }
 
     // POD is a "deselect to narrow" group (all PODs start selected).
@@ -557,7 +834,7 @@
     // change for inflow, avg aging days for backlog — its own independent
     // scale, since the two metrics aren't comparable) combo chart, sorted by
     // count with a Top/Bottom N toggle.
-    function renderTicketComboChart(elId, fullList, mode, { n = 8, lineFormat, minWidth = 640 }) {
+    function renderTicketComboChart(elId, fullList, mode, { n = 8, lineFormat, minWidth = 640, onBadgeClick }) {
       const el = document.getElementById(elId);
       if (!el) return;
       if (!fullList.length) {
@@ -620,8 +897,10 @@
         if (typeof it.lineValue !== 'number' || Number.isNaN(it.lineValue)) return '';
         const x = xFor(i);
         const y = yForLine(it.lineValue);
+        const clickable = typeof onBadgeClick === 'function';
         return `<circle cx="${x}" cy="${y}" r="3.5" class="ticket-combo-dot" />
-                <g transform="translate(${x}, ${y - 14})">
+                <g transform="translate(${x}, ${y - 14})" class="ticket-combo-badge-group${clickable ? ' ticket-combo-badge-group--clickable' : ''}" data-badge-index="${i}" ${clickable ? 'tabindex="0" role="button"' : ''}>
+                  ${clickable ? `<title>${escapeHtml(it.name)}: ${lineFormat(it.lineValue)} avg. backlog age — click for details</title>` : ''}
                   <rect x="-24" y="-11" width="48" height="18" rx="9" class="ticket-combo-badge" />
                   <text x="0" y="2" text-anchor="middle" class="ticket-combo-badge-text">${lineFormat(it.lineValue)}</text>
                 </g>`;
@@ -642,62 +921,76 @@
           ${xLabels}
         </svg>
       `;
+
+      if (typeof onBadgeClick === 'function') {
+        const activate = (target) => {
+          const group = target.closest('.ticket-combo-badge-group--clickable');
+          if (!group) return;
+          const idx = Number(group.getAttribute('data-badge-index'));
+          if (Number.isInteger(idx) && items[idx]) onBadgeClick(items[idx]);
+        };
+        el.querySelector('svg').addEventListener('click', (e) => activate(e.target));
+        el.querySelector('svg').addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            activate(e.target);
+          }
+        });
+      }
     }
 
-    const SEVERITY_BAR_CLASSES = ['ticket-status-mix-bar--1', 'ticket-status-mix-bar--2', 'ticket-status-mix-bar--3'];
+    const STATUS_BAR_CLASSES = ['ticket-status-mix-bar--2', 'ticket-status-mix-bar--3'];
+    const STATUS_MIX_CATEGORIES = ['In-Progress', 'On Hold'];
 
-    // Grouped bar chart: one group per status bucket (fixed order the
-    // server emits — Pending Confirmation / In-Progress / On Hold, plus any
-    // surprise status the bucketing didn't recognize), 3 bars per group
-    // (Sev 1/2/3) so aging-severity and status mix stay readable side by
-    // side, replacing the old one-pie-per-severity layout.
-    function renderStatusMixChart(bySeverity) {
+    // Grouped bar chart: one group per site, 2 bars per group (In-Progress /
+    // On Hold) so the backlog's status mix can be compared site by site.
+    // Pending Confirmation / Pending Information tickets are excluded from
+    // the backlog entirely (see getTicketBacklogHealth), not just this chart.
+    function renderStatusMixChart(sitewise) {
       const el = document.getElementById('statusMixChart');
       if (!el) return;
-      const categories = [];
-      bySeverity.forEach((sev) => sev.status.forEach((s) => {
-        if (!categories.includes(s.status)) categories.push(s.status);
-      }));
-      if (!categories.length) {
+      if (!sitewise.length) {
         el.innerHTML = '<p class="ticket-chart-hint">No open tickets for the current filter selection.</p>';
         return;
       }
 
-      const countFor = (sev, cat) => sev.status.find((s) => s.status === cat)?.count || 0;
-      const maxCount = Math.max(...bySeverity.flatMap((sev) => sev.status.map((s) => s.count)), 1);
+      const countFor = (site, cat) => site.status.find((s) => s.status === cat)?.count || 0;
+      const maxCount = Math.max(...sitewise.flatMap((site) => site.status.map((s) => s.count)), 1);
 
-      const barW = 34, barGap = 6, groupGap = 40;
-      const groupW = bySeverity.length * barW + (bySeverity.length - 1) * barGap;
-      const W = Math.max(560, categories.length * (groupW + groupGap));
+      const barW = 16, barGap = 4, groupGap = 32;
+      const groupW = STATUS_MIX_CATEGORIES.length * barW + (STATUS_MIX_CATEGORIES.length - 1) * barGap;
+      const W = Math.max(560, sitewise.length * (groupW + groupGap));
       const H = 280;
       const marginTop = 34, marginRight = 16, marginBottom = 40, marginLeft = 16;
       const plotW = W - marginLeft - marginRight;
       const plotH = H - marginTop - marginBottom;
       const baseline = marginTop + plotH;
-      const catBand = plotW / categories.length;
+      const siteBand = plotW / sitewise.length;
 
       function roundedTopRectPath(x, y, w, h, r) {
         const rr = Math.min(r, w / 2, Math.max(h, 0));
         return `M${x},${y + h} L${x},${y + rr} Q${x},${y} ${x + rr},${y} L${x + w - rr},${y} Q${x + w},${y} ${x + w},${y + rr} L${x + w},${y + h} Z`;
       }
 
-      const groups = categories.map((cat, ci) => {
-        const catCenterX = marginLeft + ci * catBand + catBand / 2;
-        const groupStartX = catCenterX - groupW / 2;
-        const bars = bySeverity.map((sev, si) => {
-          const count = countFor(sev, cat);
+      const groups = sitewise.map((site, i) => {
+        const siteCenterX = marginLeft + i * siteBand + siteBand / 2;
+        const groupStartX = siteCenterX - groupW / 2;
+        const bars = STATUS_MIX_CATEGORIES.map((cat, ci) => {
+          const count = countFor(site, cat);
           const barH = (count / maxCount) * plotH * 0.82;
-          const x = groupStartX + si * (barW + barGap);
+          const x = groupStartX + ci * (barW + barGap);
           const y = baseline - barH;
-          return `<path d="${roundedTopRectPath(x, y, barW, barH, 3)}" class="${SEVERITY_BAR_CLASSES[si]}" />
+          return `<path d="${roundedTopRectPath(x, y, barW, barH, 3)}" class="${STATUS_BAR_CLASSES[ci]}" />
                   ${count ? `<text x="${x + barW / 2}" y="${y - 6}" class="ticket-combo-bar-label" text-anchor="middle">${count}</text>` : ''}`;
         }).join('');
-        const label = cat.length > 24 ? `${cat.slice(0, 23)}…` : cat;
-        return `${bars}<text x="${catCenterX}" y="${baseline + 22}" class="ticket-combo-xtick" text-anchor="middle"><title>${escapeHtml(cat)}</title>${escapeHtml(label)}</text>`;
+        const label = site.name.length > 16 ? `${site.name.slice(0, 15)}…` : site.name;
+        const x = siteCenterX;
+        const y = baseline + 16;
+        return `${bars}<text x="${x}" y="${y}" class="ticket-combo-xtick" text-anchor="end" transform="rotate(-32, ${x}, ${y})"><title>${escapeHtml(site.name)}</title>${escapeHtml(label)}</text>`;
       }).join('');
 
       el.innerHTML = `
-        <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Backlog status mix by severity">
+        <svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Backlog status mix by site">
           ${groups}
         </svg>
       `;
@@ -726,7 +1019,7 @@
     }
 
     function setInflowLoadingState(isLoading) {
-      setValuesLoading(['inflowHeadlineValue', 'inflowHeadlineBadge', 'inflowHeadlineMa'], isLoading);
+      setValuesLoading(['inflowHeadlineValue', 'inflowHeadlineBadge', 'inflowHeadlineMa', 'execInflowValue', 'execInflowDelta'], isLoading);
       if (isLoading) {
         document.getElementById('inflowTrendChart').innerHTML = skeletonChart();
         document.getElementById('inflowSitewiseChart').innerHTML = skeletonChart();
@@ -736,8 +1029,9 @@
     const BACKLOG_SEVERITY_SUFFIXES = ['-1', '-2', '-3'];
 
     function setBacklogLoadingState(isLoading) {
-      setValuesLoading(['backlogHeadlineValue', 'backlogHeadlineBadge', 'slaAchievedValue'], isLoading);
+      setValuesLoading(['backlogHeadlineValue', 'backlogHeadlineBadge', 'execBacklogValue', 'execBacklogDelta'], isLoading);
       setValuesLoading(BACKLOG_SEVERITY_SUFFIXES.map((s) => `agingDaysValue${s}`), isLoading);
+      setValuesLoading(BACKLOG_SEVERITY_SUFFIXES.map((s) => `slaAchievedValue${s}`), isLoading);
       if (isLoading) {
         document.getElementById('backlogTrendChart').innerHTML = skeletonChart();
         document.getElementById('backlogSitewiseChart').innerHTML = skeletonChart();
@@ -749,11 +1043,26 @@
       setValuesLoading([
         'resolutionHeadlineValue', 'resolutionHeadlineBadge', 'resolutionHeadlineMa',
         'resolutionSlaValue', 'resolutionMttrValue',
+        'execSlaValue', 'execSlaDelta', 'execMttrValue', 'execMttrDelta',
+        'execResolvedValue', 'execResolvedDelta',
       ], isLoading);
       if (isLoading) {
         document.getElementById('resolutionTrendChart').innerHTML = skeletonChart();
         document.getElementById('resolutionMttrCategoryChart').innerHTML = skeletonChart();
         document.getElementById('resolutionSitewiseChart').innerHTML = skeletonChart();
+      }
+    }
+
+    function setResolutionSev3LoadingState(isLoading) {
+      setValuesLoading([
+        'resolutionSev3HeadlineValue', 'resolutionSev3HeadlineBadge', 'resolutionSev3HeadlineMa',
+        'resolutionSev3SlaValue', 'resolutionSev3MttrValue',
+        'execResolvedValue', 'execResolvedDelta',
+      ], isLoading);
+      if (isLoading) {
+        document.getElementById('resolutionSev3TrendChart').innerHTML = skeletonChart();
+        document.getElementById('resolutionSev3MttrCategoryChart').innerHTML = skeletonChart();
+        document.getElementById('resolutionSev3SitewiseChart').innerHTML = skeletonChart();
       }
     }
 
@@ -764,6 +1073,49 @@
     let inflowRequestId = 0;
     let backlogRequestId = 0;
     let resolutionRequestId = 0;
+    let resolutionSev3RequestId = 0;
+
+    // ---- Executive Summary strip: an at-a-glance roll-up fed by the same
+    // Inflow/Backlog/Resolution responses each section already fetches (no
+    // extra request), plus a one-line auto-generated "what changed" insight. ----
+    let execInflowSummary = null;
+    let execBacklogSummary = null;
+
+    // Total Resolved combines both resolution panels (Sev 1&2, and Sev
+    // 3 + Sev 2 Impact<50%) into one all-severities "resolved this week"
+    // figure — each panel loads independently, so the tile only renders
+    // once both have reported in.
+    let execResolutionPart = null;
+    let execResolutionSev3Part = null;
+
+    function renderExecResolvedTile() {
+      if (!execResolutionPart || !execResolutionSev3Part) return;
+      const current = execResolutionPart.current + execResolutionSev3Part.current;
+      const previous = execResolutionPart.previous + execResolutionSev3Part.previous;
+      const wowPct = previous > 0 ? ((current - previous) / previous) * 100 : (current > 0 ? null : 0);
+      setText('execResolvedValue', formatInt(current));
+      setText('execResolvedDelta', `${formatSignedPct(wowPct)} WoW`);
+      setRag('execTileResolved', typeof wowPct !== 'number' || Number.isNaN(wowPct) || wowPct === 0 ? '' : wowPct > 0 ? 'good' : 'bad');
+    }
+
+    function renderExecInsight() {
+      const el = document.getElementById('execInsight');
+      if (!el) return;
+      const backlog = execBacklogSummary;
+      const inflow = execInflowSummary;
+      let text = '';
+      if (backlog && typeof backlog.wowPct === 'number' && backlog.wowPct >= 10 && backlog.topSite) {
+        text = `Backlog is up ${backlog.wowPct.toFixed(0)}% week-over-week — largest concentration at ${backlog.topSite.name} (${formatInt(backlog.topSite.count)} open tickets).`;
+      } else if (inflow && typeof inflow.wowPct === 'number' && inflow.wowPct >= 10 && inflow.topSite && typeof inflow.topSite.pctChange === 'number' && inflow.topSite.pctChange > 0) {
+        text = `New ticket inflow is up ${inflow.wowPct.toFixed(0)}% week-over-week — sharpest increase at ${inflow.topSite.name} (${formatSignedPct(inflow.topSite.pctChange)}).`;
+      } else if (backlog && typeof backlog.wowPct === 'number' && backlog.wowPct <= -10) {
+        text = `Backlog is down ${Math.abs(backlog.wowPct).toFixed(0)}% week-over-week — trending in the right direction.`;
+      } else if (backlog || inflow) {
+        text = 'Ticket volumes are steady this week — no major shifts to flag.';
+      }
+      el.textContent = text;
+      el.hidden = !text;
+    }
 
     async function loadTicketInflow() {
       const requestId = ++inflowRequestId;
@@ -786,6 +1138,15 @@
 
         inflowSitewiseData = data.sitewise.map((s) => ({ name: s.name, count: s.count, lineValue: s.pctChange }));
         renderTicketComboChart('inflowSitewiseChart', inflowSitewiseData, inflowToggleMode, { n: Infinity, lineFormat: pctChangeLineFormat });
+
+        setText('execInflowValue', formatInt(data.headline.count));
+        setText('execInflowDelta', `${formatSignedPct(data.headline.wowPct)} WoW`);
+        setRag('execTileInflow', ragForTrend(data.headline.wowPct));
+        const topInflowSite = [...data.sitewise]
+          .filter((s) => typeof s.pctChange === 'number')
+          .sort((a, b) => b.pctChange - a.pctChange)[0];
+        execInflowSummary = { wowPct: data.headline.wowPct, topSite: topInflowSite };
+        renderExecInsight();
       } catch (err) {
         if (requestId !== inflowRequestId) return;
         setInflowLoadingState(false);
@@ -809,16 +1170,29 @@
         setTrendBadge('backlogHeadlineBadge', data.headline.wowPct);
         renderTicketLineChart('backlogTrendChart', data.trend);
 
-        setText('slaAchievedValue', data.sla.pct === null ? 'N/A' : `${data.sla.pct.toFixed(1)}%`);
-
         data.bySeverity.forEach((sev, i) => {
           const suffix = BACKLOG_SEVERITY_SUFFIXES[i];
           setText(`agingDaysValue${suffix}`, sev.agingDays === null ? 'N/A' : sev.agingDays.toFixed(0));
+          setText(`slaAchievedValue${suffix}`, sev.sla.pct === null ? 'N/A' : `${sev.sla.pct.toFixed(1)}%`);
+          setRag(`slaTile${suffix}`, ragForSlaPct(sev.sla.pct));
         });
-        renderStatusMixChart(data.bySeverity);
+        renderStatusMixChart(data.sitewise);
 
-        backlogSitewiseData = data.sitewise.map((s) => ({ name: s.name, count: s.count, lineValue: s.agingDays }));
-        renderTicketComboChart('backlogSitewiseChart', backlogSitewiseData, backlogToggleMode, { n: Infinity, lineFormat: agingLineFormat });
+        backlogSitewiseData = data.sitewise.map((s) => ({ name: s.name, count: s.count, lineValue: s.agingDays, status: s.status }));
+        renderTicketComboChart('backlogSitewiseChart', backlogSitewiseData, backlogToggleMode, { n: Infinity, lineFormat: agingLineFormat, onBadgeClick: window.openAgingBreakdownModal });
+
+        if (data.selectedWeek) {
+          const w = data.selectedWeek;
+          setText('execSummaryWeek', `Week ${w.week}, ${w.year} · ${w.start} – ${w.end}`);
+        }
+
+        setText('execBacklogValue', formatInt(data.headline.count));
+        setText('execBacklogDelta', `${formatSignedPct(data.headline.wowPct)} WoW`);
+        setRag('execTileBacklog', ragForTrend(data.headline.wowPct));
+
+        const topBacklogSite = [...data.sitewise].sort((a, b) => b.count - a.count)[0];
+        execBacklogSummary = { wowPct: data.headline.wowPct, topSite: topBacklogSite };
+        renderExecInsight();
       } catch (err) {
         if (requestId !== backlogRequestId) return;
         setBacklogLoadingState(false);
@@ -827,6 +1201,8 @@
     }
 
     let resolutionSitewiseData = [];
+    let resolutionSlaTickets = [];
+    let resolutionSev3SlaTickets = [];
 
     async function loadTicketResolution() {
       const requestId = ++resolutionRequestId;
@@ -847,12 +1223,26 @@
 
         setText('resolutionSlaValue', data.sla.pct === null ? 'N/A' : `${data.sla.pct.toFixed(1)}%`);
         setText('resolutionMttrValue', data.mttrHours === null ? 'N/A' : data.mttrHours.toFixed(1));
+        setRag('resolutionSlaTile', ragForSlaPct(data.sla.pct));
+        resolutionSlaTickets = data.sla.tickets || [];
 
         const categoryData = data.mttrByCategory.map((c) => ({ name: c.severity, count: Math.round(c.hours * 10) / 10 }));
         renderTicketComboChart('resolutionMttrCategoryChart', categoryData, 'top', { n: 4, lineFormat: hoursLineFormat, minWidth: 320 });
 
         resolutionSitewiseData = data.sitewise.map((s) => ({ name: s.name, count: s.count, lineValue: s.hours }));
         renderTicketComboChart('resolutionSitewiseChart', resolutionSitewiseData, 'top', { n: 10, lineFormat: hoursLineFormat });
+
+        setText('execSlaValue', data.sla.pct === null ? 'N/A' : `${data.sla.pct.toFixed(1)}%`);
+        setText('execSlaDelta', 'Sev 1&2 target');
+        setRag('execTileSla', ragForSlaPct(data.sla.pct));
+        setText('execMttrValue', data.mttrHours === null ? 'N/A' : data.mttrHours.toFixed(1));
+        setText('execMttrDelta', 'vs 1–2h SLA target');
+
+        execResolutionPart = {
+          current: data.headline.count,
+          previous: data.trend.length >= 2 ? data.trend[data.trend.length - 2].count : 0,
+        };
+        renderExecResolvedTile();
       } catch (err) {
         if (requestId !== resolutionRequestId) return;
         setResolutionLoadingState(false);
@@ -860,11 +1250,178 @@
       }
     }
 
+    let resolutionSev3SitewiseData = [];
+
+    async function loadTicketResolutionSev3() {
+      const requestId = ++resolutionSev3RequestId;
+      setResolutionSev3LoadingState(true);
+      const params = ticketQueryParams();
+      try {
+        const res = await fetch(`/api/ticket-resolution-sev3?${params.toString()}`, { cache: 'no-store' });
+        const data = await res.json();
+        if (requestId !== resolutionSev3RequestId) return;
+        if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+        setResolutionSev3LoadingState(false);
+
+        setText('resolutionSev3HeadlineValue', formatInt(data.headline.count));
+        setText('resolutionSev3HeadlineBadge', formatSignedPct(data.headline.wowPct));
+        setTrendBadge('resolutionSev3HeadlineBadge', data.headline.wowPct, true);
+        setText('resolutionSev3HeadlineMa', data.headline.prevMa ? data.headline.prevMa.toFixed(0) : '—');
+        renderTicketLineChart('resolutionSev3TrendChart', data.trend);
+
+        setText('resolutionSev3SlaValue', data.sla.pct === null ? 'N/A' : `${data.sla.pct.toFixed(1)}%`);
+        setText('resolutionSev3MttrValue', data.mttrHours === null ? 'N/A' : data.mttrHours.toFixed(1));
+        setRag('resolutionSev3SlaTile', ragForSlaPct(data.sla.pct));
+        resolutionSev3SlaTickets = data.sla.tickets || [];
+
+        const sev3CategoryData = data.mttrByCategory.map((c) => ({ name: c.severity, count: Math.round(c.hours * 10) / 10 }));
+        renderTicketComboChart('resolutionSev3MttrCategoryChart', sev3CategoryData, 'top', { n: 4, lineFormat: hoursLineFormat, minWidth: 320 });
+
+        resolutionSev3SitewiseData = data.sitewise.map((s) => ({ name: s.name, count: s.count, lineValue: s.hours }));
+        renderTicketComboChart('resolutionSev3SitewiseChart', resolutionSev3SitewiseData, 'top', { n: 10, lineFormat: hoursLineFormat });
+
+        execResolutionSev3Part = {
+          current: data.headline.count,
+          previous: data.trend.length >= 2 ? data.trend[data.trend.length - 2].count : 0,
+        };
+        renderExecResolvedTile();
+      } catch (err) {
+        if (requestId !== resolutionSev3RequestId) return;
+        setResolutionSev3LoadingState(false);
+        console.error('Failed to load Ticket Resolution (Sev 3) data:', err);
+      }
+    }
+
     function loadTicketHealth() {
       loadTicketInflow();
       loadTicketBacklog();
       loadTicketResolution();
+      loadTicketResolutionSev3();
     }
+
+    // ---- SLA Adherence drill-down modal: lists every closed ticket behind
+    // the tile's percentage, with its own resolution time and SLA outcome. ----
+    (function setupSlaTicketsModal() {
+      const modal = document.getElementById('slaTicketsModal');
+      const title = document.getElementById('slaTicketsModalTitle');
+      const body = document.getElementById('slaTicketsModalBody');
+      const panel = modal?.querySelector('.trend-modal-panel');
+      if (!modal || !title || !body || !panel) return;
+
+      const AGING_STATUS_DOT_COLORS = { 'In-Progress': 'var(--warning)', 'On Hold': 'var(--secondary)' };
+
+      function formatResolutionTime(hours) {
+        if (typeof hours !== 'number' || Number.isNaN(hours)) return '—';
+        if (hours >= 24) {
+          const days = Math.floor(hours / 24);
+          const rem = Math.round(hours % 24);
+          return rem ? `${days}d ${rem}h` : `${days}d`;
+        }
+        return `${hours.toFixed(1)}h`;
+      }
+
+      function formatDateTime(iso) {
+        if (!iso) return '—';
+        const d = new Date(iso);
+        if (Number.isNaN(d.getTime())) return '—';
+        return d.toLocaleString('en-GB', {
+          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+        });
+      }
+
+      function ticketRow(t) {
+        const badgeClass = t.withinSla ? 'sla-outcome-badge--within' : 'sla-outcome-badge--breach';
+        const badgeText = t.withinSla ? 'Within SLA' : 'Breached';
+        return `
+          <tr>
+            <td>${escapeHtml(t.caseNumber || '—')}</td>
+            <td>${escapeHtml(t.site || '—')}</td>
+            <td>${escapeHtml(t.severity || '—')}</td>
+            <td>${formatDateTime(t.createdAt)}</td>
+            <td>${formatDateTime(t.closedAt)}</td>
+            <td>${formatResolutionTime(t.resolutionHours)}</td>
+            <td><span class="sla-outcome-badge ${badgeClass}">${badgeText}</span></td>
+          </tr>
+        `;
+      }
+
+      window.openSlaTicketsModal = function openSlaTicketsModal(modalTitle, tickets) {
+        panel.classList.add('sla-tickets-modal-panel');
+        panel.classList.remove('aging-breakdown-modal-panel');
+        title.textContent = modalTitle;
+        if (!tickets || !tickets.length) {
+          body.innerHTML = '<div class="trend-modal-empty">No tickets closed this week for the current filter selection.</div>';
+        } else {
+          body.innerHTML = `
+            <table class="sla-tickets-table">
+              <thead>
+                <tr>
+                  <th>Case #</th><th>Site</th><th>Severity</th><th>Created</th><th>Closed</th><th>Resolution Time</th><th>Outcome</th>
+                </tr>
+              </thead>
+              <tbody>${tickets.map(ticketRow).join('')}</tbody>
+            </table>
+          `;
+        }
+        modal.hidden = false;
+      };
+
+      // Backlog aging badge drill-down: reuses the same modal chrome to
+      // explain one site's average aging days alongside its backlog status
+      // mix, since both are already computed server-side per site.
+      window.openAgingBreakdownModal = function openAgingBreakdownModal(item) {
+        panel.classList.remove('sla-tickets-modal-panel');
+        panel.classList.add('aging-breakdown-modal-panel');
+        title.textContent = `${item.name} — Backlog Aging`;
+        const statusRows = (item.status || [])
+          .filter((s) => s.count > 0)
+          .map((s) => `
+            <div class="aging-breakdown-row">
+              <span class="aging-breakdown-row-label"><span class="aging-breakdown-dot" style="background:${AGING_STATUS_DOT_COLORS[s.status] || 'var(--text-muted)'}"></span>${escapeHtml(s.status)}</span>
+              <span class="aging-breakdown-row-value">${formatInt(s.count)}</span>
+            </div>
+          `).join('');
+        body.innerHTML = `
+          <p class="aging-breakdown-summary">
+            <strong>${escapeHtml(item.name)}</strong> has <strong>${formatInt(item.count)}</strong> ticket${item.count === 1 ? '' : 's'} currently in backlog,
+            open for <strong>${item.lineValue.toFixed(0)} day${item.lineValue.toFixed(0) === '1' ? '' : 's'}</strong> on average
+            &mdash; the time elapsed since creation, averaged across every open backlog ticket at this site.
+          </p>
+          ${statusRows ? `<div class="aging-breakdown-rows">${statusRows}</div>` : ''}
+        `;
+        modal.hidden = false;
+      };
+
+      function closeModal() {
+        modal.hidden = true;
+      }
+
+      document.getElementById('slaTicketsModalClose')?.addEventListener('click', closeModal);
+      document.getElementById('slaTicketsModalBackdrop')?.addEventListener('click', closeModal);
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !modal.hidden) closeModal();
+      });
+
+      function bindTile(tileId, weekLabelPrefix, getTickets) {
+        const tile = document.getElementById(tileId);
+        if (!tile) return;
+        const open = () => window.openSlaTicketsModal(`${weekLabelPrefix} — Closed Tickets`, getTickets());
+        tile.addEventListener('click', (e) => {
+          if (e.target.closest('.kpi-info-icon')) return;
+          open();
+        });
+        tile.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            open();
+          }
+        });
+      }
+
+      bindTile('resolutionSlaTile', 'SLA Adherence (Sev 1&2)', () => resolutionSlaTickets);
+      bindTile('resolutionSev3SlaTile', 'SLA Adherence (Sev 2<50% & Sev 3)', () => resolutionSev3SlaTickets);
+      bindTile('execTileSla', 'SLA Adherence (Sev 1&2)', () => resolutionSlaTickets);
+    })();
 
     document.getElementById('inflowSeverityTabs')?.addEventListener('click', (e) => {
       const btn = e.target.closest('.severity-tab');
@@ -890,7 +1447,7 @@
       if (!btn) return;
       backlogToggleMode = btn.getAttribute('data-mode');
       document.querySelectorAll('#backlogToggleGroup .toggle-btn').forEach((b) => b.classList.toggle('is-active', b === btn));
-      renderTicketComboChart('backlogSitewiseChart', backlogSitewiseData, backlogToggleMode, { n: Infinity, lineFormat: agingLineFormat });
+      renderTicketComboChart('backlogSitewiseChart', backlogSitewiseData, backlogToggleMode, { n: Infinity, lineFormat: agingLineFormat, onBadgeClick: window.openAgingBreakdownModal });
     });
 
     loadPods();

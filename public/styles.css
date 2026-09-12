@@ -613,6 +613,23 @@ a {
   border-radius: var(--radius-sm);
 }
 
+/* Table-row skeletons (Ticket Details / 3 Day History on the Home page):
+   .skeleton-bar is tuned for flex rows elsewhere, where the flex container
+   blockifies it; a plain <td>/<th> doesn't, so the bar needs its own
+   display: inline-block to actually take on a height. */
+.skeleton-row td,
+.skeleton-row th {
+  cursor: default;
+}
+
+.skeleton-cell-bar {
+  display: inline-block;
+  height: 12px;
+  width: 100%;
+  max-width: 120px;
+  border-radius: 6px;
+}
+
 /* Pie backgrounds are set via conic-gradient at higher specificity than
    .is-loading, so the shimmer needs its own compound rule to win. */
 .uptime-pie.is-loading,
@@ -3052,6 +3069,109 @@ td.col-mono {
   margin-top: 4px;
 }
 
+/* ---- Ticket Journey: two tapering funnel charts (SF Case Flow, Bug
+   Outcome Flow) sitting above the KPI card groups, built from the same
+   k = data.kpis numbers as the cards below. ---- */
+.funnel-section {
+  margin-bottom: 24px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--border);
+}
+
+.funnel-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  margin-bottom: 16px;
+}
+
+.funnel-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.funnel-section-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.funnel-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(280px, 1fr));
+  gap: 20px;
+}
+
+.funnel-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.funnel-box-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.funnel-chart {
+  width: 100%;
+}
+
+.funnel-chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.funnel-segment {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+
+.funnel-value-text {
+  font-size: 15px;
+  font-weight: 750;
+  fill: white;
+}
+
+.funnel-pct-text {
+  font-size: 10.5px;
+  font-weight: 600;
+  fill: rgba(255, 255, 255, 0.88);
+}
+
+.funnel-label-text {
+  font-size: 11.5px;
+  font-weight: 700;
+  fill: var(--text-primary);
+}
+
+.funnel-label-sub {
+  font-size: 10px;
+  fill: var(--text-muted);
+}
+
+.funnel-box-caption {
+  margin: 10px 0 0;
+  font-size: 11.5px;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+
+@media (max-width: 780px) {
+  .funnel-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ---- Ticket Inflow / Backlog Health ---- */
 
 .ticket-inflow-section,
@@ -3177,6 +3297,37 @@ td.col-mono {
   gap: 16px;
   align-items: stretch;
   margin-bottom: 16px;
+}
+
+.ticket-sla-severity-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+
+.ticket-sla-severity-stack .ticket-kpi-tile {
+  flex: 1;
+}
+
+/* SLA Achieved % tiles get their own purple accent (distinct from the
+   Resolution sections' blue/green SLA tiles) and a tighter footprint than
+   the shared --compact sizing. */
+.ticket-sla-severity-stack .ticket-kpi-tile--sla {
+  border-top-color: color-mix(in srgb, var(--accent-gstore) 60%, var(--border));
+}
+
+.ticket-sla-severity-stack .ticket-kpi-tile--sla .ticket-kpi-value {
+  color: color-mix(in srgb, var(--accent-gstore) 85%, var(--text-primary));
+}
+
+.ticket-sla-severity-stack .ticket-kpi-tile--compact {
+  padding: 8px 12px;
+  gap: 4px;
+}
+
+.ticket-sla-severity-stack .ticket-kpi-tile--compact .ticket-kpi-value {
+  font-size: 18px;
 }
 
 .ticket-backlog-severity-grid {
@@ -3417,6 +3568,67 @@ td.col-mono {
   margin: 0;
 }
 
+.ticket-scroll-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+  margin-left: 6px;
+}
+
+.ticket-scroll-hint-icon {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  stroke: currentColor;
+}
+
+.ticket-scroll-wrap {
+  position: relative;
+}
+
+.ticket-scroll-btn {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--text-primary);
+  box-shadow: var(--shadow-md);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  transform: translateY(-50%);
+  transition: opacity 0.15s var(--ease-out), transform 0.15s var(--ease-out), border-color 0.15s var(--ease-out);
+}
+
+.ticket-scroll-btn:hover {
+  border-color: var(--border-strong);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.ticket-scroll-btn:disabled {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ticket-scroll-btn--left {
+  left: 2px;
+}
+
+.ticket-scroll-btn--right {
+  right: 2px;
+}
+
 .toggle-btn-group {
   display: flex;
   gap: 2px;
@@ -3493,6 +3705,16 @@ td.col-mono {
   fill: var(--text-primary);
 }
 
+.ticket-combo-badge-group--clickable { cursor: pointer; }
+
+.ticket-combo-badge-group--clickable:hover .ticket-combo-badge,
+.ticket-combo-badge-group--clickable:focus-visible .ticket-combo-badge {
+  fill: color-mix(in srgb, var(--danger) 30%, var(--card));
+  stroke: var(--danger);
+}
+
+.ticket-combo-badge-group--clickable:focus-visible { outline: none; }
+
 .ticket-combo-xtick {
   font-size: 10px;
   fill: var(--text-muted);
@@ -3544,6 +3766,69 @@ td.col-mono {
   color: var(--text-muted);
 }
 
+.ticket-kpi-label-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.kpi-info-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: help;
+  position: relative;
+  isolation: isolate;
+}
+
+.kpi-info-icon:hover,
+.kpi-info-icon:focus-visible {
+  color: var(--primary);
+  border-color: var(--primary);
+  outline: none;
+  z-index: 60;
+}
+
+.kpi-info-icon::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 240px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: #d1d5db;
+  color: #111827;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: left;
+  white-space: normal;
+  box-shadow: var(--shadow-md);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s var(--ease-out);
+  z-index: 20;
+  pointer-events: none;
+}
+
+.kpi-info-icon:hover::after,
+.kpi-info-icon:focus-visible::after {
+  opacity: 1;
+  visibility: visible;
+}
+
 .ticket-kpi-value {
   font-size: 30px;
   font-weight: 750;
@@ -3558,6 +3843,138 @@ td.col-mono {
 
 .ticket-kpi-tile--aging .ticket-kpi-value {
   color: color-mix(in srgb, var(--warning) 80%, var(--text-primary));
+}
+
+.ticket-kpi-tile--clickable {
+  cursor: pointer;
+}
+
+.ticket-kpi-tile-hint {
+  font-size: 10.5px;
+  font-weight: 650;
+  color: var(--primary);
+  opacity: 0;
+  transition: opacity 0.15s var(--ease-out);
+}
+
+.ticket-kpi-tile--clickable:hover .ticket-kpi-tile-hint,
+.ticket-kpi-tile--clickable:focus-visible .ticket-kpi-tile-hint,
+.exec-tile--clickable:hover .ticket-kpi-tile-hint,
+.exec-tile--clickable:focus-visible .ticket-kpi-tile-hint {
+  opacity: 1;
+}
+
+.exec-tile--clickable {
+  cursor: pointer;
+}
+
+/* SLA Adherence drill-down modal — reuses .trend-modal chrome with a table body */
+.sla-tickets-modal-panel {
+  width: min(760px, 94vw);
+}
+
+/* Backlog aging badge drill-down — reuses .trend-modal chrome with a compact summary body */
+.aging-breakdown-modal-panel {
+  width: min(420px, 92vw);
+}
+
+.aging-breakdown-summary {
+  margin: 4px 8px 12px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.aging-breakdown-summary strong {
+  color: var(--text-primary);
+}
+
+.aging-breakdown-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+.aging-breakdown-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.aging-breakdown-row-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+}
+
+.aging-breakdown-row-value {
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.aging-breakdown-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sla-tickets-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+
+.sla-tickets-table th,
+.sla-tickets-table td {
+  padding: 8px 10px;
+  text-align: left;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--border);
+}
+
+.sla-tickets-table thead th {
+  position: sticky;
+  top: 0;
+  background: var(--card);
+  color: var(--text-muted);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 650;
+}
+
+.sla-tickets-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.sla-tickets-table tbody tr:hover td {
+  background: var(--surface);
+}
+
+.sla-outcome-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.sla-outcome-badge--within {
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  color: color-mix(in srgb, var(--primary) 80%, var(--text-primary));
+}
+
+.sla-outcome-badge--breach {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: color-mix(in srgb, var(--danger) 80%, var(--text-primary));
 }
 
 .ticket-status-mix-legend {
@@ -3687,6 +4104,321 @@ td.col-mono {
   .severity-tab {
     flex: 1 1 50%;
     border-bottom: 1px solid var(--border);
+  }
+}
+
+/* ---- Section jump nav + glossary popover ---- */
+
+.section-nav {
+  position: sticky;
+  top: 66px;
+  z-index: 9;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: 1px solid var(--border);
+}
+
+.section-nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.section-nav-link {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--text-secondary);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.section-nav-link:hover,
+.section-nav-link:focus-visible {
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--secondary) 14%, transparent);
+  outline: none;
+}
+
+.glossary-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  appearance: none;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 650;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+
+.glossary-toggle span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1px solid currentColor;
+  font-size: 10px;
+}
+
+.glossary-toggle:hover,
+.glossary-toggle[aria-expanded="true"] {
+  color: var(--text-primary);
+  border-color: var(--border-strong);
+  background: color-mix(in srgb, var(--secondary) 12%, var(--surface));
+}
+
+.glossary-panel {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px 18px;
+  margin: 0 0 20px;
+  padding: 16px 18px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  animation: fade-up 0.25s var(--ease-out) both;
+}
+
+.glossary-panel[hidden] {
+  display: none;
+}
+
+.glossary-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.glossary-item dt {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: color-mix(in srgb, var(--secondary) 80%, white);
+}
+
+.glossary-item dd {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* ---- Executive Summary strip: the "so what" a leader should see before
+   any chart — every tile's border/value color is data-driven via [data-rag],
+   not a fixed per-category color, so it always reflects whether that number
+   is currently good or bad. ---- */
+
+#execSummary,
+#inflowSection,
+#backlogSection,
+#resolutionSection,
+#resolutionSev3Section {
+  scroll-margin-top: 140px;
+}
+
+.exec-summary-section {
+  position: relative;
+  margin-bottom: 22px;
+  padding: 22px 24px;
+  background: linear-gradient(165deg, color-mix(in srgb, var(--secondary) 8%, var(--card)), var(--card));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  animation: fade-up 0.4s var(--ease-out) both;
+}
+
+.exec-summary-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  column-gap: 12px;
+  row-gap: 2px;
+  margin-bottom: 16px;
+}
+
+.exec-summary-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+
+.exec-summary-sub {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.exec-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.exec-tile-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.exec-tile-caption {
+  margin: 0;
+  padding: 0 2px;
+  font-size: 11px;
+  font-weight: 550;
+  line-height: 1.35;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.exec-tile {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 18px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  text-align: center;
+  transition: border-color 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out), transform 0.18s var(--ease-out);
+}
+
+.exec-tile:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+
+.exec-tile-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.exec-tile-label-sub {
+  font-size: 10px;
+  font-weight: 550;
+  color: var(--text-muted);
+}
+
+.exec-tile-value {
+  font-size: 30px;
+  font-weight: 780;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.exec-tile-delta {
+  font-size: 11.5px;
+  font-weight: 650;
+  color: var(--text-muted);
+}
+
+.exec-insight {
+  margin: 16px 0 0;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--secondary);
+  border-radius: var(--radius-sm);
+}
+
+.exec-insight[hidden] {
+  display: none;
+}
+
+/* RAG coloring — shared by Executive Summary tiles and every KPI tile that
+   has a clear target (SLA Achieved / SLA Adherence). Wins over the static
+   per-category accent colors (e.g. .ticket-kpi-tile--sla's green top border)
+   because it targets the element by id/attribute, which is more specific. */
+.exec-tile[data-rag="good"],
+.ticket-kpi-tile[data-rag="good"] {
+  border-top-color: var(--primary);
+}
+
+.exec-tile[data-rag="good"] .exec-tile-value,
+.ticket-kpi-tile[data-rag="good"] .ticket-kpi-value {
+  color: color-mix(in srgb, var(--primary) 85%, var(--text-primary));
+}
+
+.exec-tile[data-rag="good"] .exec-tile-delta {
+  color: color-mix(in srgb, var(--primary) 80%, white);
+}
+
+.exec-tile[data-rag="warn"],
+.ticket-kpi-tile[data-rag="warn"] {
+  border-top-color: var(--warning);
+}
+
+.exec-tile[data-rag="warn"] .exec-tile-value,
+.ticket-kpi-tile[data-rag="warn"] .ticket-kpi-value {
+  color: color-mix(in srgb, var(--warning) 85%, var(--text-primary));
+}
+
+.exec-tile[data-rag="warn"] .exec-tile-delta {
+  color: color-mix(in srgb, var(--warning) 80%, white);
+}
+
+.exec-tile[data-rag="bad"],
+.ticket-kpi-tile[data-rag="bad"] {
+  border-top-color: var(--danger);
+}
+
+.exec-tile[data-rag="bad"] .exec-tile-value,
+.ticket-kpi-tile[data-rag="bad"] .ticket-kpi-value {
+  color: color-mix(in srgb, var(--danger) 85%, var(--text-primary));
+}
+
+.exec-tile[data-rag="bad"] .exec-tile-delta {
+  color: color-mix(in srgb, var(--danger) 80%, white);
+}
+
+@media (max-width: 980px) {
+  .exec-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  /* The topbar wraps onto 3 rows below this width (see its own responsive
+     rule), so its height is no longer a fixed 66px — drop the nav's sticky
+     offset rather than guess a new one. */
+  .section-nav {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .exec-summary-grid {
+    grid-template-columns: 1fr;
   }
 }
 

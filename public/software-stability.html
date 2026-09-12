@@ -363,14 +363,14 @@
       </details>
     </section>
 
-    <section class="bucket-section" aria-label="Bucket counts">
+    <section class="bucket-section" aria-label="Ticket and engineering analysis breakdown">
       <div class="bucket-header">
-        <h2 class="bucket-title" id="bucketCountsTitle">Bucket Counts</h2>
+        <h2 class="bucket-title" id="bucketCountsTitle">Ticket &amp; Engineering Analysis Breakdown</h2>
       </div>
 
       <div class="bucket-charts">
         <div class="uptime-chart-box bucket-chart-box">
-          <span class="uptime-overall-label">Unique EAs Split &middot; SF</span>
+          <span class="uptime-overall-label">Unique EAs Split · SF</span>
           <div class="bucket-pie" id="bucketPieSf">
             <div class="uptime-pie-center">
               <span class="uptime-pie-value" id="bucketPieSfTotal">&mdash;</span>
@@ -378,13 +378,13 @@
             </div>
           </div>
           <ul class="uptime-pie-legend">
-            <li><span class="legend-dot" style="--dot-color: var(--secondary)"></span>Month EAs<span class="legend-count" id="bucketSfMonth">&mdash;</span></li>
-            <li><span class="legend-dot" style="--dot-color: var(--accent-gstore)"></span>Old EAs<span class="legend-count" id="bucketSfOld">&mdash;</span></li>
+            <li><span class="legend-dot" style="--dot-color: var(--secondary)"></span>Opened this period<span class="legend-count" id="bucketSfMonth">&mdash;</span></li>
+            <li><span class="legend-dot" style="--dot-color: var(--accent-gstore)"></span>Opened before this period<span class="legend-count" id="bucketSfOld">&mdash;</span></li>
           </ul>
         </div>
 
         <div class="uptime-chart-box bucket-chart-box">
-          <span class="uptime-overall-label">Unique EAs Split &middot; GM</span>
+          <span class="uptime-overall-label">Unique EAs Split · GMr</span>
           <div class="bucket-pie" id="bucketPieGm">
             <div class="uptime-pie-center">
               <span class="uptime-pie-value" id="bucketPieGmTotal">&mdash;</span>
@@ -392,8 +392,8 @@
             </div>
           </div>
           <ul class="uptime-pie-legend">
-            <li><span class="legend-dot" style="--dot-color: var(--secondary)"></span>Month EAs<span class="legend-count" id="bucketGmMonth">&mdash;</span></li>
-            <li><span class="legend-dot" style="--dot-color: var(--accent-gstore)"></span>Old EAs<span class="legend-count" id="bucketGmOld">&mdash;</span></li>
+            <li><span class="legend-dot" style="--dot-color: var(--secondary)"></span>Opened this period<span class="legend-count" id="bucketGmMonth">&mdash;</span></li>
+            <li><span class="legend-dot" style="--dot-color: var(--accent-gstore)"></span>Opened before this period<span class="legend-count" id="bucketGmOld">&mdash;</span></li>
           </ul>
         </div>
       </div>
@@ -402,7 +402,7 @@
         <table>
           <thead>
             <tr>
-              <th>Bucket</th>
+              <th>What's being counted</th>
               <th>SF Cases</th>
               <th>GM Cases</th>
             </tr>
@@ -412,18 +412,42 @@
       </div>
 
       <details class="bucket-callout">
-        <summary>What does each bucket row mean?</summary>
+        <summary>What does each row mean?</summary>
         <ul>
-          <li><strong>Total SF Cases</strong> &mdash; SF cases created in the selected period matching scope: Type &isin; ('Incident') AND Product_Type__c &isin; ('RTP', 'TTP'). Narrowed further by the active Pod/Severity filters.</li>
-          <li><strong>SF &mdash; Any GM link / Unique EAs</strong> &mdash; SF: cases pointing to ANY GM-XXX regardless of when the EA was created. GM: distinct EA keys those cases point to (de-duplicated).</li>
-          <li><strong>SF Linked w/ Month EAs / Month EAs</strong> &mdash; SF: cases whose linked EA was created in this period (IST). GM: distinct Month EAs = In Progress + Concluded.</li>
-          <li><strong>SF Cases / EA &mdash; concluded from TEO</strong> &mdash; Of the Month EAs, the subset matching the TEO filter (resolved by TEO users + status &isin; {Done, Unable to Conclude, No longer an issue}). SF: cases linked to those EAs.</li>
-          <li><strong>SF Cases / EA reached to QA</strong> &mdash; Month EAs NOT in the TEO-resolved filter set &mdash; the QA-bound work pool. By construction equals Month In Progress + Month Concluded. Broader than the Ticket &rarr; QA KPI numerator (that also requires a changelog transition to <code>QA analysis in progress</code>).</li>
-          <li><strong>Month EAs &mdash; In Progress / Concluded</strong> &mdash; Status split of Month EAs (Concluded = Done/No longer an issue/Unable to Conclude, AND not TEO-resolved). Concluded is the EA &rarr; Bug denominator and the TEO Leakage universe.</li>
-          <li><strong>SF Linked w/ Old EAs / Old EAs</strong> &mdash; SF: cases (in-period) whose linked EA was created OUTSIDE the period. GM: distinct Old EAs = Unique EAs linked w/ SF &minus; Month EAs. By construction Month + Old = Unique.</li>
-          <li><strong>Old EAs &mdash; In Progress / Concluded</strong> &mdash; Status split of Old EAs.</li>
+          <li><strong>Total Customer Tickets Opened</strong> &mdash; Support tickets (Salesforce cases) created in the selected period, narrowed to the Incident/RTP/TTP scope and the active Pod/Severity filters.</li>
+          <li><strong>Tickets Linked to an Engineering Analysis (ever)</strong> &mdash; Of those tickets, how many point to an engineering investigation at all, no matter when that investigation was opened. The other number is how many distinct investigations they point to.</li>
+          <li><strong>Tickets Linked to a New Engineering Analysis (this period)</strong> &mdash; Same idea, but only counting investigations that were themselves opened in this period.</li>
+          <li><strong>Resolved Directly by Support Engineering &mdash; No Escalation</strong> &mdash; Of this period's investigations, the ones our support engineering team (TEO) closed out themselves, without sending them further.</li>
+          <li><strong>Escalated to QA for Deeper Investigation</strong> &mdash; This period's investigations that needed a deeper look from QA instead of being resolved directly.</li>
+          <li><strong>New Engineering Analyses Still Open</strong> &mdash; This period's investigations that are still being worked (analysis, QA, dev, or waiting on info).</li>
+          <li><strong>New Engineering Analyses Closed</strong> &mdash; This period's investigations that have been wrapped up (done, no longer an issue, or unable to conclude).</li>
+          <li><strong>Tickets Linked to an Older Engineering Analysis</strong> &mdash; Tickets from this period whose linked investigation was actually opened in an earlier period, plus how many such older investigations are involved.</li>
+          <li><strong>Older Engineering Analyses Still Open</strong> &mdash; Of those older investigations, the ones still being worked.</li>
+          <li><strong>Older Engineering Analyses Closed</strong> &mdash; Of those older investigations, the ones already wrapped up.</li>
         </ul>
       </details>
+    </section>
+
+    <section class="kpi-section" aria-label="Ticket Journey">
+      <div class="funnel-section">
+        <div class="funnel-section-head">
+          <span class="funnel-section-title"><span aria-hidden="true">🧭</span> Ticket Journey</span>
+          <span class="funnel-section-sub">How cases move from intake to root cause this period</span>
+        </div>
+
+        <div class="funnel-grid">
+          <div class="funnel-box">
+            <h3 class="funnel-box-title">SF Case Flow</h3>
+            <div class="funnel-chart" id="funnelSfChart" role="img" aria-label="SF case flow funnel"></div>
+            <p class="funnel-box-caption">Ticket&rarr;GM, Ticket&rarr;TEO and Ticket&rarr;QA, each as a share of all SF cases this period.</p>
+          </div>
+          <div class="funnel-box">
+            <h3 class="funnel-box-title" id="funnelEaTitle">EA Ticket Flow</h3>
+            <div class="funnel-chart" id="funnelEaChart" role="img" aria-label="EA ticket flow funnel"></div>
+            <p class="funnel-box-caption" id="funnelEaCaption">&mdash;</p>
+          </div>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -1517,11 +1541,84 @@
       }
     }
 
+    // ---- Ticket Journey funnels: two tapering SVG funnels built from the
+    // same k = data.kpis numbers as the KPI cards below (never a separate
+    // fetch), so the visual can never drift out of sync with the cards. ----
+    const FUNNEL_COLORS = ['#2563eb', '#3b82f6', '#f59e0b', '#ef4444'];
+
+    // Renders `stages` (each {label, sub, value}, first stage = 100%) as a
+    // vertically-stacked funnel: every segment tapers from its own top width
+    // down to the next segment's width, so segments interlock with no gaps.
+    // A floor width keeps the smallest stage (often a single-digit count)
+    // wide enough to hold its own label.
+    function buildFunnelSvg(stages) {
+      const labelW = 176, barAreaW = 260, gapX = 12;
+      const stageH = 60, rowGap = 6;
+      const W = labelW + gapX + barAreaW;
+      const H = stages.length * stageH + (stages.length - 1) * rowGap;
+      const cx = labelW + gapX + barAreaW / 2;
+      const baseValue = stages[0].value || 1;
+      const minFrac = 0.22;
+
+      const widths = stages.map((s) => Math.max(barAreaW * minFrac, barAreaW * (s.value / baseValue)));
+
+      const segments = stages.map((s, i) => {
+        const y = i * (stageH + rowGap);
+        const topW = widths[i];
+        const bottomW = i < widths.length - 1 ? widths[i + 1] : widths[i];
+        const color = FUNNEL_COLORS[i % FUNNEL_COLORS.length];
+        const points = [
+          [cx - topW / 2, y],
+          [cx + topW / 2, y],
+          [cx + bottomW / 2, y + stageH],
+          [cx - bottomW / 2, y + stageH],
+        ].map((p) => p.join(',')).join(' ');
+
+        const midY = y + stageH / 2;
+        const pct = baseValue ? s.value / baseValue : 0;
+
+        return `
+          <polygon points="${points}" fill="${color}" class="funnel-segment" />
+          <text x="${cx}" y="${midY - 6}" text-anchor="middle" class="funnel-value-text">${formatInt(s.value)}</text>
+          <text x="${cx}" y="${midY + 12}" text-anchor="middle" class="funnel-pct-text">${formatPct(pct)}</text>
+          <text x="${labelW}" y="${midY - 5}" text-anchor="end" class="funnel-label-text">${escapeHtml(s.label)}</text>
+          ${s.sub ? `<text x="${labelW}" y="${midY + 11}" text-anchor="end" class="funnel-label-sub">${escapeHtml(s.sub)}</text>` : ''}
+        `;
+      }).join('');
+
+      return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img">${segments}</svg>`;
+    }
+
+    function renderFunnels(k, periodLabel) {
+      document.getElementById('funnelSfChart').innerHTML = buildFunnelSvg([
+        { label: 'Total SF Cases', sub: 'all cases', value: k.ticketToGm.den },
+        { label: 'Linked to GM', sub: 'engineering ticket', value: k.ticketToGm.num },
+        { label: 'Resolved by TEO', sub: 'no escalation needed', value: k.ticketToTeo.num },
+        { label: 'Escalated to QA', sub: 'needs deeper review', value: k.ticketToQa.num },
+      ]);
+
+      const f = k.eaTicketFlow;
+      document.getElementById('funnelEaChart').innerHTML = buildFunnelSvg([
+        { label: 'EAs linked with SF', sub: 'any creation date', value: f.linkedAnyCreation.num },
+        { label: 'New EAs', sub: 'created in period', value: f.newInPeriod.num },
+        { label: '→ Reached QA', sub: 'of new EAs', value: f.reachedQa.num },
+        { label: '→ Strict Bug', sub: 'of new EAs, Known Bug/Missed Checkin/New Bug', value: f.strictBug.num },
+      ]);
+
+      setText('funnelEaTitle', `EA Ticket Flow — ${periodLabel}`);
+      setText(
+        'funnelEaCaption',
+        `Of ${formatInt(f.linkedAnyCreation.num)} EAs linked with SF (any creation date), ${formatPct(f.newInPeriod.pct)} (${formatInt(f.newInPeriod.num)}) are new this period. ` +
+        `Of those new EAs, ${formatPct(f.reachedQa.pct)} have reached QA, and ${formatPct(f.strictBug.pct)} concluded as a strict bug (Known Bug/Missed Checkin/New Bug).`
+      );
+    }
+
     function renderKpiData(data) {
       setText('kpiSummaryTitle', `KPI Summary GreyMatter— ${data.period.label}`);
       setText('bucketCountsTitle', `Bucket Counts — ${data.period.label}`);
 
       const k = data.kpis;
+      renderFunnels(k, data.period.label);
       setText('kpiTicketGmValue', formatPct(k.ticketToGm.pct));
       setText('kpiTicketGmSub', `${formatInt(k.ticketToGm.num)}/${formatInt(k.ticketToGm.den)} SF cases`);
       setText('kpiTicketGmLinkText', `View ${formatInt(k.ticketToGm.num)} any-GM-link cases`);
@@ -1576,6 +1673,14 @@
     loadKpiData();
     populateStabilityFilterOptions();
     loadUptimeAndMtbf();
+
+    // Auto-refresh: re-pull live data on the current filters every 8 hours,
+    // so a tab left open overnight doesn't go stale without a manual reload.
+    const AUTO_REFRESH_INTERVAL_MS = 8 * 60 * 60 * 1000;
+    setInterval(() => {
+      loadKpiData();
+      loadUptimeAndMtbf();
+    }, AUTO_REFRESH_INTERVAL_MS);
   </script>
 </body>
 </html>
