@@ -465,6 +465,30 @@ function soqlString(value) {
   return `'${String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'`;
 }
 
+// gStore sites are a different product line from the Software incidents this
+// page tracks and shouldn't appear anywhere in Ticket Health — SOQL's LIKE
+// is case-insensitive, so this catches "gStore"/"GSTORE"/etc. regardless of
+// the site filter selection. A null Account_Name__c never matches LIKE, so
+// it stays included (NOT of false is true), which is correct here.
+//
+// Some sites under the "gStore Customers" parent account don't have "gstore"
+// in their own name, so they need an explicit exact-match exclusion too
+// (per Salesforce Account hierarchy as of 2026-09-12; re-check if new sites
+// are added under that parent).
+const GSTORE_CHILD_SITES = [
+  'COS',
+  'Deckers Brands',
+  'Fabletics',
+  'Foot Locker',
+  'Gap Old Navy',
+  'Groupe Dynamite',
+  'Nordstrom Account',
+  'PetSmart, Inc.',
+];
+const EXCLUDE_GSTORE_SITES_CLAUSE =
+  `(NOT Account_Name__c LIKE '%gstore%') AND ` +
+  `(NOT Account_Name__c IN (${GSTORE_CHILD_SITES.map(soqlString).join(',')}))`;
+
 export async function getTicketInflowHealth({
   anchor = new Date().toISOString().slice(0, 10),
   weeks = TICKET_HEALTH_TREND_WEEKS,
@@ -477,7 +501,7 @@ export async function getTicketInflowHealth({
   rangeStartDate.setUTCDate(rangeStartDate.getUTCDate() - (weeks - 1) * 7);
   const rangeStart = rangeStartDate.toISOString().slice(0, 10);
 
-  const clauses = [`Type = 'Incident'`, `Category__c = 'Software'`];
+  const clauses = [`Type = 'Incident'`, `Category__c = 'Software'`, EXCLUDE_GSTORE_SITES_CLAUSE];
   if (sites.length) clauses.push(`Account_Name__c IN (${sites.map(soqlString).join(',')})`);
   if (products.length) clauses.push(`Product_Type__c IN (${products.map(soqlString).join(',')})`);
   if (severities.length) clauses.push(`SLA_Category__c IN (${severities.map(soqlString).join(',')})`);
@@ -569,7 +593,6 @@ function withinBacklogSla(severity, elapsedMin) {
   return false;
 }
 const STATUS_BUCKETS = [
-  { label: 'Pending Confirmation', statuses: ['Pending Confirmation', 'Pending Information'] },
   { label: 'In-Progress', statuses: ['Assigned', 'In-Progress', 'New'] },
   { label: 'On Hold', statuses: ['On Hold'] },
 ];
@@ -611,13 +634,18 @@ export async function getTicketBacklogHealth({
   rangeStartDate.setUTCDate(rangeStartDate.getUTCDate() - (weeks - 1) * 7);
   const rangeStartTs = `${rangeStartDate.toISOString().slice(0, 10)}T00:00:00+05:30`;
 
-  const clauses = [`Type = 'Incident'`, `Category__c = 'Software'`];
+  const clauses = [`Type = 'Incident'`, `Category__c = 'Software'`, EXCLUDE_GSTORE_SITES_CLAUSE];
   if (sites.length) clauses.push(`Account_Name__c IN (${sites.map(soqlString).join(',')})`);
   if (products.length) clauses.push(`Product_Type__c IN (${products.map(soqlString).join(',')})`);
   // Only cases that could still be "open" somewhere in the trend window —
   // still open now, or closed after the window's earliest week started.
   // (A currently-open case with no ClosedDate always passes.)
   clauses.push(`(IsClosed = false OR ClosedDate > ${rangeStartTs})`);
+  // Pending Confirmation / Pending Information tickets are waiting on the
+  // customer, not the team, so they're excluded from backlog entirely
+  // (headline, trend, SLA, aging, sitewise, status mix), not just hidden
+  // from the status mix chart.
+  clauses.push(`Status NOT IN ('Pending Confirmation','Pending Information')`);
 
   const soql =
     `SELECT CreatedDate, ClosedDate, IsClosed, Status, SLA_Category__c, ` +
@@ -667,12 +695,17 @@ export async function getTicketBacklogHealth({
   const weekEndTs = istTimestampMs(anchorWeek.end, true);
   let slaWithin = 0;
   let slaTotal = 0;
+  const slaBySeverity = new Map([...BACKLOG_SLA_AGING_SEVERITIES].map((sev) => [sev, { within: 0, total: 0 }]));
   for (const r of parsed) {
     if (!BACKLOG_SLA_AGING_SEVERITIES.has(r.severity)) continue;
     if (r.createdMs < weekStartTs || r.createdMs > weekEndTs) continue;
     slaTotal += 1;
     const elapsedMin = ((r.isClosed ? r.closedMs : nowMs) - r.createdMs) / 60000;
-    if (withinBacklogSla(r.severity, elapsedMin)) slaWithin += 1;
+    const within = withinBacklogSla(r.severity, elapsedMin);
+    if (within) slaWithin += 1;
+    const bucket = slaBySeverity.get(r.severity);
+    bucket.total += 1;
+    if (within) bucket.within += 1;
   }
 
   // Aging + Status (both now per Severity 1/2/3) + Sitewise BL aging all
@@ -686,19 +719,27 @@ export async function getTicketBacklogHealth({
       ? recs.reduce((sum, r) => sum + (nowMs - r.createdMs), 0) / recs.length / 86400000
       : null;
     const status = bucketedStatusCounts(recs);
-    return { severity: sev, count: recs.length, agingDays, status };
+    const slaBucket = slaBySeverity.get(sev);
+    const slaPct = slaBucket.total > 0 ? (slaBucket.within / slaBucket.total) * 100 : null;
+    return { severity: sev, count: recs.length, agingDays, status, sla: { pct: slaPct, within: slaBucket.within, total: slaBucket.total } };
   });
 
-  const siteAgg = new Map(); // site -> { count, totalAgeMs }
+  const siteAgg = new Map(); // site -> { count, totalAgeMs, records }
   for (const r of openNow) {
     if (!r.site) continue;
-    if (!siteAgg.has(r.site)) siteAgg.set(r.site, { count: 0, totalAgeMs: 0 });
+    if (!siteAgg.has(r.site)) siteAgg.set(r.site, { count: 0, totalAgeMs: 0, records: [] });
     const agg = siteAgg.get(r.site);
     agg.count += 1;
     agg.totalAgeMs += nowMs - r.createdMs;
+    agg.records.push(r);
   }
   const sitewise = [...siteAgg.entries()]
-    .map(([name, agg]) => ({ name, count: agg.count, agingDays: agg.totalAgeMs / agg.count / 86400000 }))
+    .map(([name, agg]) => ({
+      name,
+      count: agg.count,
+      agingDays: agg.totalAgeMs / agg.count / 86400000,
+      status: bucketedStatusCounts(agg.records),
+    }))
     .sort((a, b) => b.count - a.count);
 
   console.log(`[salesforce] getTicketBacklogHealth: ${records.length} case(s), week ${anchorWeek.year}-W${anchorWeek.week}`);
@@ -731,7 +772,24 @@ function withinResolutionSla(severity, resolutionMin) {
   return severity === 'Severity 2' ? resolutionMin <= 120 : resolutionMin <= 60;
 }
 
+// This section covers all Sev 3 plus the Sev 2 slice the Sev1&2 (Impact>=50%)
+// section above doesn't — Sev 2 with Impact <50%.
+const RESOLUTION_SEV3_SEVERITIES = ['Severity 2', 'Severity 3'];
+const RESOLUTION_SEV3_SCOPE_CLAUSE =
+  `(Highest_Severity__c = 'Severity 3' OR (Highest_Severity__c = 'Severity 2' AND Impact_Percentage__c < 50))`;
+
+// Sev3 has no Impact_Percentage__c gate and uses the same flat 72h ceiling as
+// the Backlog panel's withinBacklogSla Sev3 rule; Sev2 here (Impact <50%)
+// uses that same panel's flat Sev2 ceiling, 24h.
+function withinResolutionSlaSev3(severity, resolutionMin) {
+  return severity === 'Severity 2' ? resolutionMin <= 1440 : resolutionMin <= 4320;
+}
+
 /**
+ * Shared aggregation behind getTicketResolutionHealth (Sev 1/2, Impact
+ * >=50%) and getTicketResolutionHealthSev3 (Sev 3 + Sev 2 Impact<50%) — same
+ * shape, only the severity/impact scope and SLA rule differ.
+ *
  * `anchor`/`weeks` behave like the other Ticket Health panels': `anchor`
  * selects "this week" for the Solved Tickets headline, SLA Adherence %, and
  * MTTR (Hours) tiles. MTTR by SLA Category and the sitewise Resolution
@@ -739,12 +797,17 @@ function withinResolutionSla(severity, resolutionMin) {
  * a single week's critical-ticket volume is often just a handful of cases
  * (see the Solved Tickets trend), too thin a sample to break down further.
  */
-export async function getTicketResolutionHealth({
+async function computeResolutionHealth({
   anchor = new Date().toISOString().slice(0, 10),
   weeks = TICKET_HEALTH_TREND_WEEKS,
   sites = [],
   products = [],
-} = {}) {
+  severities,
+  requireImpact50,
+  scopeClause,
+  withinSla,
+  logLabel,
+}) {
   const anchorWeek = isoWeekOf(anchor);
   const rangeStartDate = new Date(`${anchorWeek.start}T00:00:00Z`);
   rangeStartDate.setUTCDate(rangeStartDate.getUTCDate() - (weeks - 1) * 7);
@@ -752,18 +815,18 @@ export async function getTicketResolutionHealth({
   const rangeEndTs = `${anchorWeek.end}T23:59:59+05:30`;
 
   const clauses = [
-    `Type = 'Incident'`, `Category__c = 'Software'`,
-    `Highest_Severity__c IN ('Severity 1','Severity 2')`,
-    `Impact_Percentage__c >= 50`,
+    `Type = 'Incident'`, `Category__c = 'Software'`, EXCLUDE_GSTORE_SITES_CLAUSE,
+    scopeClause || `Highest_Severity__c IN (${severities.map(soqlString).join(',')})`,
     `IsClosed = true`,
     `ClosedDate >= ${rangeStartTs}`,
     `ClosedDate <= ${rangeEndTs}`,
   ];
+  if (!scopeClause && requireImpact50) clauses.push(`Impact_Percentage__c >= 50`);
   if (sites.length) clauses.push(`Account_Name__c IN (${sites.map(soqlString).join(',')})`);
   if (products.length) clauses.push(`Product_Type__c IN (${products.map(soqlString).join(',')})`);
 
   const soql =
-    `SELECT CreatedDate, ClosedDate, Highest_Severity__c, Account_Name__c FROM Case WHERE ${clauses.join(' AND ')}`;
+    `SELECT CaseNumber, CreatedDate, ClosedDate, Highest_Severity__c, Account_Name__c FROM Case WHERE ${clauses.join(' AND ')}`;
 
   let records = [];
   let nextPath = `/services/data/${SF_API_VERSION}/query?q=${encodeURIComponent(soql)}`;
@@ -775,6 +838,7 @@ export async function getTicketResolutionHealth({
 
   const parsed = records
     .map((r) => ({
+      caseNumber: r.CaseNumber,
       createdMs: Date.parse(r.CreatedDate),
       closedMs: Date.parse(r.ClosedDate),
       severity: r.Highest_Severity__c,
@@ -811,8 +875,23 @@ export async function getTicketResolutionHealth({
     ? thisWeekRecords.reduce((sum, r) => sum + hoursOf(r), 0) / thisWeekRecords.length
     : null;
 
-  const slaWithin = thisWeekRecords.filter((r) => withinResolutionSla(r.severity, hoursOf(r) * 60)).length;
+  const slaWithin = thisWeekRecords.filter((r) => withinSla(r.severity, hoursOf(r) * 60)).length;
   const slaPct = thisWeekRecords.length ? (slaWithin / thisWeekRecords.length) * 100 : null;
+
+  // Ticket-level detail behind the SLA Adherence tile's drill-down — every
+  // case closed this week in scope, with its own resolution time and
+  // within/outside SLA outcome, sorted worst (slowest) first.
+  const slaTickets = thisWeekRecords
+    .map((r) => ({
+      caseNumber: r.caseNumber,
+      site: r.site,
+      severity: r.severity,
+      createdAt: new Date(r.createdMs).toISOString(),
+      closedAt: new Date(r.closedMs).toISOString(),
+      resolutionHours: hoursOf(r),
+      withinSla: withinSla(r.severity, hoursOf(r) * 60),
+    }))
+    .sort((a, b) => b.resolutionHours - a.resolutionHours);
 
   // MTTR by SLA Category and the sitewise breakdown both aggregate across the
   // full trend window rather than just the anchor week — see doc comment.
@@ -823,7 +902,7 @@ export async function getTicketResolutionHealth({
     agg.count += 1;
     agg.totalHours += hoursOf(r);
   }
-  const mttrByCategory = RESOLUTION_SEVERITIES
+  const mttrByCategory = severities
     .filter((sev) => bySeverity.has(sev))
     .map((sev) => {
       const agg = bySeverity.get(sev);
@@ -842,15 +921,39 @@ export async function getTicketResolutionHealth({
     .map(([name, agg]) => ({ name, count: agg.count, hours: agg.totalHours / agg.count }))
     .sort((a, b) => b.count - a.count);
 
-  console.log(`[salesforce] getTicketResolutionHealth: ${records.length} case(s), week ${anchorWeek.year}-W${anchorWeek.week}`);
+  console.log(`[salesforce] ${logLabel}: ${records.length} case(s), week ${anchorWeek.year}-W${anchorWeek.week}`);
 
   return {
     trend,
     headline: { count: totalCount, wowPct: wowPctChange(totalCount, prevTotal), prevMa },
-    sla: { pct: slaPct, within: slaWithin, total: thisWeekRecords.length },
+    sla: { pct: slaPct, within: slaWithin, total: thisWeekRecords.length, tickets: slaTickets },
     mttrHours,
     mttrByCategory,
     sitewise,
     selectedWeek: { year: anchorWeek.year, week: anchorWeek.week, start: anchorWeek.start, end: anchorWeek.end },
   };
+}
+
+export async function getTicketResolutionHealth(params = {}) {
+  return computeResolutionHealth({
+    ...params,
+    severities: RESOLUTION_SEVERITIES,
+    requireImpact50: true,
+    withinSla: withinResolutionSla,
+    logLabel: 'getTicketResolutionHealth',
+  });
+}
+
+// Ticket Resolution Health, Sev 3 section — all closed Sev 3 Software
+// incidents plus the Sev 2 slice the Sev1&2 (Impact>=50%) section above
+// doesn't cover (Sev 2 with Impact <50%), scored against each severity's own
+// flat SLA ceiling (Sev 2: 24h, Sev 3: 72h — see withinResolutionSlaSev3).
+export async function getTicketResolutionHealthSev3(params = {}) {
+  return computeResolutionHealth({
+    ...params,
+    severities: RESOLUTION_SEV3_SEVERITIES,
+    scopeClause: RESOLUTION_SEV3_SCOPE_CLAUSE,
+    withinSla: withinResolutionSlaSev3,
+    logLabel: 'getTicketResolutionHealthSev3',
+  });
 }

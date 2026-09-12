@@ -394,6 +394,15 @@ async function loadDashboard() {
   } catch (err) {
     errorText.textContent = `Couldn't refresh: ${err.message}`;
     errorBanner.hidden = false;
+    // Only the first load leaves skeleton rows in casesBody/casesHead — once
+    // renderCases has run once, a later failed refresh just keeps showing
+    // the last-known cases instead of blanking the table.
+    if (!lastCasesData) {
+      casesHead.innerHTML = '';
+      casesBody.innerHTML = `<tr><td class="cell-muted">Could not load ticket details.</td></tr>`;
+      casesTable.hidden = false;
+      casesEmpty.hidden = true;
+    }
   } finally {
     refreshIcon.classList.remove('spinning');
     refreshBtn.disabled = false;

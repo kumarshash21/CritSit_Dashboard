@@ -480,6 +480,12 @@ function deriveFiltered(raw, { severities = [], pods = [], site = '' } = {}, pod
 
   const totalMonthEas = raw.counts.totalMonthEas;
 
+  // EA Ticket Flow funnel — "Reached QA" and "Strict Bug" are scoped to
+  // inPeriodLinkedKeys (new EAs created this period), so the funnel narrows
+  // monotonically: linked EAs -> new EAs -> reached QA -> strict bug.
+  const eaReachedQaCount = [...inPeriodLinkedKeys].filter((k) => raw.gmStatus.get(k)?.reachedQa).length;
+  const eaStrictBugCount = [...inPeriodLinkedKeys].filter((k) => raw.gmStatus.get(k)?.hasStrictBug).length;
+
   const kpis = {
     ticketToGm: { pct: pct(sfAnyGmLink, totalSf), num: sfAnyGmLink, den: totalSf },
     ticketToTeo: {
@@ -507,19 +513,25 @@ function deriveFiltered(raw, { severities = [], pods = [], site = '' } = {}, pod
       pct: pct(raw.counts.eaToImprovementNum, raw.counts.eaToImprovementDen),
       num: raw.counts.eaToImprovementNum, den: raw.counts.eaToImprovementDen,
     },
+    eaTicketFlow: {
+      linkedAnyCreation: { pct: 1, num: allLinkedKeys.size, den: allLinkedKeys.size },
+      newInPeriod: { pct: pct(eaInPeriodLinkedToSf, allLinkedKeys.size), num: eaInPeriodLinkedToSf, den: allLinkedKeys.size },
+      reachedQa: { pct: pct(eaReachedQaCount, inPeriodLinkedKeys.size), num: eaReachedQaCount, den: inPeriodLinkedKeys.size },
+      strictBug: { pct: pct(eaStrictBugCount, inPeriodLinkedKeys.size), num: eaStrictBugCount, den: inPeriodLinkedKeys.size },
+    },
   };
 
   const bucketRows = [
-    { label: 'Total SF Cases', sf: totalSf, gm: '—' },
-    { label: 'SF — Any GM link / Unique EAs', sf: sfAnyGmLink, gm: allLinkedKeys.size },
-    { label: 'SF Linked w/ Month EAs / Month EAs', sf: sfLinkedToGm, gm: eaInPeriodLinkedToSf },
-    { label: 'SF Cases / EA — concluded from TEO', sf: sfConcludedFromTeo, gm: concludedFromTeoKeys.size },
-    { label: 'SF Cases / EA reached to QA', sf: sfConcludedFromQa, gm: concludedFromQaKeys.size },
-    { label: 'Month EAs — In Progress', sf: '—', gm: raw.counts.monthEasInProgress },
-    { label: 'Month EAs — Concluded', sf: '—', gm: raw.counts.monthEasConcluded },
-    { label: 'SF Linked w/ Old EAs / Old EAs', sf: sfLinkedToOldEas, gm: oldEaKeys.size },
-    { label: 'Old EAs — In Progress', sf: '—', gm: oldEasInProgressKeys.size },
-    { label: 'Old EAs — Concluded', sf: '—', gm: oldEasConcludedKeys.size },
+    { label: 'Total Customer Tickets Opened', sf: totalSf, gm: '—' },
+    { label: 'Tickets Linked to an Engineering Analysis (ever)', sf: sfAnyGmLink, gm: allLinkedKeys.size },
+    { label: 'Tickets Linked to a New Engineering Analysis (this period)', sf: sfLinkedToGm, gm: eaInPeriodLinkedToSf },
+    { label: 'Resolved Directly by Support Engineering — No Escalation', sf: sfConcludedFromTeo, gm: concludedFromTeoKeys.size },
+    { label: 'Escalated to QA for Deeper Investigation', sf: sfConcludedFromQa, gm: concludedFromQaKeys.size },
+    { label: 'New Engineering Analyses Still Open', sf: '—', gm: raw.counts.monthEasInProgress },
+    { label: 'New Engineering Analyses Closed', sf: '—', gm: raw.counts.monthEasConcluded },
+    { label: 'Tickets Linked to an Older Engineering Analysis', sf: sfLinkedToOldEas, gm: oldEaKeys.size },
+    { label: 'Older Engineering Analyses Still Open', sf: '—', gm: oldEasInProgressKeys.size },
+    { label: 'Older Engineering Analyses Closed', sf: '—', gm: oldEasConcludedKeys.size },
   ];
 
   const pies = {

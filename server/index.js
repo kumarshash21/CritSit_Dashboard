@@ -1,11 +1,12 @@
 import 'dotenv/config';
 import path from 'node:path';
+import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import {
   getCaseListView, getTicketHistory, getTrendData, getTrendDayDetail,
   getTicketInflowHealth, getTicketBacklogHealth,
-  getTicketResolutionHealth,
+  getTicketResolutionHealth, getTicketResolutionHealthSev3,
 } from './salesforce.js';
 import { dayKeyInZone, isValidTimeZone, zonedMidnightUtc } from './tz.js';
 import { computeTeoKpis, currentIstYearMonth } from './teoKpi.js';
@@ -56,6 +57,153 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 4001;
 
 const app = express();
+app.use(express.urlencoded({ extended: false }));
+
+// --- Ticket Health password protection ---------------------------------
+// A single shared password (TICKET_HEALTH_PASSWORD) gates the Ticket Health
+// page and its data APIs. Sessions are opaque tokens kept in memory (this
+// app runs as a single process), handed to the browser as an HttpOnly
+// cookie so the page's own JS never sees or has to manage the token.
+const TICKET_HEALTH_PASSWORD = process.env.TICKET_HEALTH_PASSWORD || 'changeme';
+const TICKET_HEALTH_COOKIE = 'ticket_health_session';
+const TICKET_HEALTH_SESSION_TTL_MS = 12 * 60 * 60 * 1000; // 12 hours
+const ticketHealthSessions = new Map(); // token -> expiry epoch ms
+
+function parseCookies(req) {
+  const header = req.headers.cookie;
+  if (!header) return {};
+  return Object.fromEntries(
+    header.split(';').map((pair) => {
+      const idx = pair.indexOf('=');
+      if (idx === -1) return [pair.trim(), ''];
+      return [pair.slice(0, idx).trim(), decodeURIComponent(pair.slice(idx + 1).trim())];
+    })
+  );
+}
+
+function isTicketHealthAuthed(req) {
+  const token = parseCookies(req)[TICKET_HEALTH_COOKIE];
+  if (!token) return false;
+  const expiry = ticketHealthSessions.get(token);
+  if (!expiry) return false;
+  if (expiry < Date.now()) {
+    ticketHealthSessions.delete(token);
+    return false;
+  }
+  return true;
+}
+
+function ticketHealthLoginPage({ error } = {}) {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Ticket Health &middot; CritSit Dashboard</title>
+  <link rel="icon" type="image/jpeg" href="go-logo.jpg" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .login-shell {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .login-card {
+      width: 100%;
+      max-width: 360px;
+      background: var(--panel, #16161a);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 32px;
+      box-shadow: var(--shadow-sm, 0 8px 24px rgba(0,0,0,0.3));
+      text-align: center;
+    }
+    .login-card img { width: 40px; height: 40px; margin-bottom: 12px; }
+    .login-card h1 { font-size: 18px; margin: 0 0 4px; color: var(--text-primary); }
+    .login-card p { margin: 0 0 20px; color: var(--text-secondary); font-size: 13px; }
+    .login-card input[type="password"] {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text-primary);
+      font-size: 14px;
+      margin-bottom: 14px;
+    }
+    .login-card button {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 8px;
+      border: none;
+      background: var(--accent-aa, #3b82f6);
+      color: #fff;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .login-error {
+      color: #f87171;
+      font-size: 13px;
+      margin: 0 0 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-shell">
+    <form class="login-card" method="post" action="/api/ticket-health/login">
+      <img src="go-logo.jpg" alt="" />
+      <h1>Ticket Health</h1>
+      <p>Enter the password to view this page.</p>
+      ${error ? `<p class="login-error">${error}</p>` : ''}
+      <input type="password" name="password" placeholder="Password" autofocus required />
+      <button type="submit">Unlock</button>
+    </form>
+  </div>
+</body>
+</html>`;
+}
+
+function requireTicketHealthPage(req, res, next) {
+  if (isTicketHealthAuthed(req)) return next();
+  res.status(401).type('html').send(ticketHealthLoginPage());
+}
+
+function requireTicketHealthApi(req, res, next) {
+  if (isTicketHealthAuthed(req)) return next();
+  res.status(401).json({ error: 'Not authenticated' });
+}
+
+app.post('/api/ticket-health/login', (req, res) => {
+  const { password } = req.body || {};
+  if (password !== TICKET_HEALTH_PASSWORD) {
+    return res.status(401).type('html').send(ticketHealthLoginPage({ error: 'Incorrect password.' }));
+  }
+  const token = crypto.randomBytes(24).toString('hex');
+  ticketHealthSessions.set(token, Date.now() + TICKET_HEALTH_SESSION_TTL_MS);
+  res.setHeader(
+    'Set-Cookie',
+    `${TICKET_HEALTH_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=${TICKET_HEALTH_SESSION_TTL_MS / 1000}; SameSite=Lax`
+  );
+  res.redirect('/ticket-health.html');
+});
+
+app.post('/api/ticket-health/logout', (req, res) => {
+  const token = parseCookies(req)[TICKET_HEALTH_COOKIE];
+  if (token) ticketHealthSessions.delete(token);
+  res.setHeader('Set-Cookie', `${TICKET_HEALTH_COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax`);
+  res.redirect('/ticket-health.html');
+});
+
+// Must come before express.static so an unauthenticated request for the
+// page itself gets the login form instead of the real file.
+app.get('/ticket-health.html', requireTicketHealthPage, (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'ticket-health.html'));
+});
+
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('/api/dashboard', async (req, res) => {
@@ -260,7 +408,7 @@ async function ticketHealthAnchor(year, week) {
   return new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
 }
 
-app.get('/api/ticket-inflow', async (req, res) => {
+app.get('/api/ticket-inflow', requireTicketHealthApi, async (req, res) => {
   try {
     const params = await ticketParams(req);
     const severities = severityLabels(toArray(req.query.severity));
@@ -275,7 +423,7 @@ app.get('/api/ticket-inflow', async (req, res) => {
   }
 });
 
-app.get('/api/ticket-backlog', async (req, res) => {
+app.get('/api/ticket-backlog', requireTicketHealthApi, async (req, res) => {
   try {
     const params = await ticketParams(req);
     const anchor = await ticketHealthAnchor(params.year, params.week);
@@ -287,11 +435,23 @@ app.get('/api/ticket-backlog', async (req, res) => {
   }
 });
 
-app.get('/api/ticket-resolution', async (req, res) => {
+app.get('/api/ticket-resolution', requireTicketHealthApi, async (req, res) => {
   try {
     const params = await ticketParams(req);
     const anchor = await ticketHealthAnchor(params.year, params.week);
     const data = await getTicketResolutionHealth({ anchor, sites: params.sites, products: params.products });
+    res.json(data);
+  } catch (err) {
+    console.error(err);
+    res.status(502).json({ error: err.message });
+  }
+});
+
+app.get('/api/ticket-resolution-sev3', requireTicketHealthApi, async (req, res) => {
+  try {
+    const params = await ticketParams(req);
+    const anchor = await ticketHealthAnchor(params.year, params.week);
+    const data = await getTicketResolutionHealthSev3({ anchor, sites: params.sites, products: params.products });
     res.json(data);
   } catch (err) {
     console.error(err);
