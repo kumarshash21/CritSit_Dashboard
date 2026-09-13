@@ -135,18 +135,25 @@ function getLinkedBugs(ticket) {
 function getLinkedEaKeys(ticket) {
   return getLinkedByType(ticket, EA_ISSUE_TYPE);
 }
+// True if the ticket is currently sitting in a QA status, ever transitioned
+// into one, or ever transitioned out of one — the last case catches tickets
+// created directly at a QA status (Jira's changelog never records the
+// initial status as a transition, only *changes* to it), which would
+// otherwise be missed by a from/to scan of just `toString`.
 function ticketReachedQa(ticket) {
+  if (QA_STATUSES.has(getStatus(ticket))) return true;
   for (const h of ticket.changelog?.histories || []) {
     for (const item of h.items || []) {
-      if (item.field === 'status' && QA_STATUSES.has(item.toString)) return true;
+      if (item.field === 'status' && (QA_STATUSES.has(item.toString) || QA_STATUSES.has(item.fromString))) return true;
     }
   }
   return false;
 }
 function ticketReachedQaInProgress(ticket) {
+  if (getStatus(ticket) === QA_IN_PROGRESS_STATUS) return true;
   for (const h of ticket.changelog?.histories || []) {
     for (const item of h.items || []) {
-      if (item.field === 'status' && item.toString === QA_IN_PROGRESS_STATUS) return true;
+      if (item.field === 'status' && (item.toString === QA_IN_PROGRESS_STATUS || item.fromString === QA_IN_PROGRESS_STATUS)) return true;
     }
   }
   return false;
@@ -481,10 +488,11 @@ function deriveFiltered(raw, { severities = [], pods = [], site = '' } = {}, pod
   const totalMonthEas = raw.counts.totalMonthEas;
 
   // EA Ticket Flow funnel — "Reached QA" and "Strict Bug" are scoped to
-  // inPeriodLinkedKeys (new EAs created this period), so the funnel narrows
-  // monotonically: linked EAs -> new EAs -> reached QA -> strict bug.
-  const eaReachedQaCount = [...inPeriodLinkedKeys].filter((k) => raw.gmStatus.get(k)?.reachedQa).length;
-  const eaStrictBugCount = [...inPeriodLinkedKeys].filter((k) => raw.gmStatus.get(k)?.hasStrictBug).length;
+  // allLinkedKeys (every EA linked with SF, any creation date), not just
+  // new-in-period EAs, so an old EA that reached QA / concluded as a strict
+  // bug still counts here even though it isn't part of "New EAs".
+  const eaReachedQaCount = [...allLinkedKeys].filter((k) => raw.gmStatus.get(k)?.reachedQa).length;
+  const eaStrictBugCount = [...allLinkedKeys].filter((k) => raw.gmStatus.get(k)?.hasStrictBug).length;
 
   const kpis = {
     ticketToGm: { pct: pct(sfAnyGmLink, totalSf), num: sfAnyGmLink, den: totalSf },
@@ -516,20 +524,20 @@ function deriveFiltered(raw, { severities = [], pods = [], site = '' } = {}, pod
     eaTicketFlow: {
       linkedAnyCreation: { pct: 1, num: allLinkedKeys.size, den: allLinkedKeys.size },
       newInPeriod: { pct: pct(eaInPeriodLinkedToSf, allLinkedKeys.size), num: eaInPeriodLinkedToSf, den: allLinkedKeys.size },
-      reachedQa: { pct: pct(eaReachedQaCount, inPeriodLinkedKeys.size), num: eaReachedQaCount, den: inPeriodLinkedKeys.size },
-      strictBug: { pct: pct(eaStrictBugCount, inPeriodLinkedKeys.size), num: eaStrictBugCount, den: inPeriodLinkedKeys.size },
+      reachedQa: { pct: pct(eaReachedQaCount, allLinkedKeys.size), num: eaReachedQaCount, den: allLinkedKeys.size },
+      strictBug: { pct: pct(eaStrictBugCount, allLinkedKeys.size), num: eaStrictBugCount, den: allLinkedKeys.size },
     },
   };
 
   const bucketRows = [
-    { label: 'Total Customer Tickets Opened', sf: totalSf, gm: '—' },
-    { label: 'Tickets Linked to an Engineering Analysis (ever)', sf: sfAnyGmLink, gm: allLinkedKeys.size },
-    { label: 'Tickets Linked to a New Engineering Analysis (this period)', sf: sfLinkedToGm, gm: eaInPeriodLinkedToSf },
-    { label: 'Resolved Directly by Support Engineering — No Escalation', sf: sfConcludedFromTeo, gm: concludedFromTeoKeys.size },
-    { label: 'Escalated to QA for Deeper Investigation', sf: sfConcludedFromQa, gm: concludedFromQaKeys.size },
+    { label: 'Total GreyMatter SW Incidents Reported', sf: totalSf, gm: '—' },
+    { label: 'Incidents linked to Engineering Analysis (EA)', sf: sfAnyGmLink, gm: allLinkedKeys.size },
+    { label: 'Incidents linked with New EAs [Created in applied period]', sf: sfLinkedToGm, gm: eaInPeriodLinkedToSf },
+    { label: 'Resolved by TEO [Technical Excellence Org] team', sf: sfConcludedFromTeo, gm: concludedFromTeoKeys.size },
+    { label: 'Transferred to QA from TEO', sf: sfConcludedFromQa, gm: concludedFromQaKeys.size },
     { label: 'New Engineering Analyses Still Open', sf: '—', gm: raw.counts.monthEasInProgress },
     { label: 'New Engineering Analyses Closed', sf: '—', gm: raw.counts.monthEasConcluded },
-    { label: 'Tickets Linked to an Older Engineering Analysis', sf: sfLinkedToOldEas, gm: oldEaKeys.size },
+    { label: 'Incidents linked with Old EAs', sf: sfLinkedToOldEas, gm: oldEaKeys.size },
     { label: 'Older Engineering Analyses Still Open', sf: '—', gm: oldEasInProgressKeys.size },
     { label: 'Older Engineering Analyses Closed', sf: '—', gm: oldEasConcludedKeys.size },
   ];
