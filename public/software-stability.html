@@ -414,14 +414,14 @@
       <details class="bucket-callout">
         <summary>What does each row mean?</summary>
         <ul>
-          <li><strong>Total Customer Tickets Opened</strong> &mdash; Support tickets (Salesforce cases) created in the selected period, narrowed to the Incident/RTP/TTP scope and the active Pod/Severity filters.</li>
-          <li><strong>Tickets Linked to an Engineering Analysis (ever)</strong> &mdash; Of those tickets, how many point to an engineering investigation at all, no matter when that investigation was opened. The other number is how many distinct investigations they point to.</li>
-          <li><strong>Tickets Linked to a New Engineering Analysis (this period)</strong> &mdash; Same idea, but only counting investigations that were themselves opened in this period.</li>
-          <li><strong>Resolved Directly by Support Engineering &mdash; No Escalation</strong> &mdash; Of this period's investigations, the ones our support engineering team (TEO) closed out themselves, without sending them further.</li>
-          <li><strong>Escalated to QA for Deeper Investigation</strong> &mdash; This period's investigations that needed a deeper look from QA instead of being resolved directly.</li>
+          <li><strong>Total GreyMatter SW Incidents Reported</strong> &mdash; Support tickets (Salesforce cases) created in the selected period, narrowed to the Incident/RTP/TTP scope and the active Pod/Severity filters.</li>
+          <li><strong>Incidents linked to Engineering Analysis(EA)</strong> &mdash; Of those tickets, how many point to an engineering investigation at all, no matter when that investigation was opened. The other number is how many distinct investigations they point to.</li>
+          <li><strong>Incidents linked with New EAs [Created in applied period]</strong> &mdash; Same idea, but only counting investigations that were themselves opened in this period.</li>
+          <li><strong>Resolved by TEO[Technical Excellence Org] team &mdash; No Escalation</strong> &mdash; Of this period's investigations, the ones our support engineering team (TEO) closed out themselves, without sending them further.</li>
+          <li><strong>Transferred to QA from TEO</strong> &mdash; This period's investigations that needed a deeper look from QA instead of being resolved directly.</li>
           <li><strong>New Engineering Analyses Still Open</strong> &mdash; This period's investigations that are still being worked (analysis, QA, dev, or waiting on info).</li>
           <li><strong>New Engineering Analyses Closed</strong> &mdash; This period's investigations that have been wrapped up (done, no longer an issue, or unable to conclude).</li>
-          <li><strong>Tickets Linked to an Older Engineering Analysis</strong> &mdash; Tickets from this period whose linked investigation was actually opened in an earlier period, plus how many such older investigations are involved.</li>
+          <li><strong>Incidents linked with Old EAs</strong> &mdash; Tickets from this period whose linked investigation was actually opened in an earlier period, plus how many such older investigations are involved.</li>
           <li><strong>Older Engineering Analyses Still Open</strong> &mdash; Of those older investigations, the ones still being worked.</li>
           <li><strong>Older Engineering Analyses Closed</strong> &mdash; Of those older investigations, the ones already wrapped up.</li>
         </ul>
@@ -1601,15 +1601,15 @@
       document.getElementById('funnelEaChart').innerHTML = buildFunnelSvg([
         { label: 'EAs linked with SF', sub: 'any creation date', value: f.linkedAnyCreation.num },
         { label: 'New EAs', sub: 'created in period', value: f.newInPeriod.num },
-        { label: '→ Reached QA', sub: 'of new EAs', value: f.reachedQa.num },
-        { label: '→ Strict Bug', sub: 'of new EAs, Known Bug/Missed Checkin/New Bug', value: f.strictBug.num },
+        { label: 'Reached QA', sub: 'all linked EAs', value: f.reachedQa.num },
+        { label: 'Strict Bug', sub: 'of all linked EAs, Known Bug/Missed Checkin/New Bug', value: f.strictBug.num },
       ]);
 
       setText('funnelEaTitle', `EA Ticket Flow — ${periodLabel}`);
       setText(
         'funnelEaCaption',
         `Of ${formatInt(f.linkedAnyCreation.num)} EAs linked with SF (any creation date), ${formatPct(f.newInPeriod.pct)} (${formatInt(f.newInPeriod.num)}) are new this period. ` +
-        `Of those new EAs, ${formatPct(f.reachedQa.pct)} have reached QA, and ${formatPct(f.strictBug.pct)} concluded as a strict bug (Known Bug/Missed Checkin/New Bug).`
+        `Of all linked EAs, ${formatPct(f.reachedQa.pct)} have reached QA, and ${formatPct(f.strictBug.pct)} concluded as a strict bug (Known Bug/Missed Checkin/New Bug).`
       );
     }
 
