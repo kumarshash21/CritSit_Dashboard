@@ -105,7 +105,7 @@ async function resolveWeekAnchor(table, year, week, { completedOnly = false } = 
 // available week); sites/products narrow both the snapshot and the 6-week
 // trend down to the selected Site/Product-Type filter chips.
 export async function getUptimeData({ year, week, sites = [], products = [] } = {}) {
-  const anchor = await resolveWeekAnchor(UPTIME_TABLE, year, week);
+  const anchor = await resolveWeekAnchor(UPTIME_TABLE, year, week, { completedOnly: !(year && week) });
   if (!anchor) return { snapshot: [], weekly: [], selectedWeek: null };
   const weekStart = anchor.Week_Start_Date.value;
   const weekEnd = anchor.Week_End_Date.value;
@@ -342,6 +342,7 @@ export async function getStabilityFilterOptions() {
   const weekRows = await runQuery(`
     SELECT Year AS year, Week_Num AS week, Week_Start_Date AS week_start, Week_End_Date AS week_end
     FROM ${UPTIME_TABLE}
+    WHERE Week_End_Date < CURRENT_DATE()
     GROUP BY year, week, week_start, week_end
     ORDER BY week_start DESC
     LIMIT 26

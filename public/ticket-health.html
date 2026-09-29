@@ -597,7 +597,9 @@
           const label = `${w.year} · Week ${w.week} (${w.start} – ${w.end})`;
           return `<option value="${w.year}-${w.week}">${escapeHtml(label)}</option>`;
         });
-        weekSel.innerHTML = `<option value="">Latest week</option>${weekOptions.join('')}`;
+        const latestWeek = (json.weeks || [])[0];
+        const latestLabel = latestWeek ? `Week ${latestWeek.week} (latest)` : 'Latest week';
+        weekSel.innerHTML = `<option value="">${escapeHtml(latestLabel)}</option>${weekOptions.join('')}`;
 
         // gStore sites are a different product line from the Software
         // incidents this page tracks, so they're dropped from the Site
