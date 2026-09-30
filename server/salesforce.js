@@ -957,3 +957,76 @@ export async function getTicketResolutionHealthSev3(params = {}) {
     logLabel: 'getTicketResolutionHealthSev3',
   });
 }
+
+const GREEN_LOOKBACK_MS = 7 * 24 * 3600 * 1000;
+const GREEN_CACHE_TTL_MS = 60 * 1000;
+let greenStatsCache = null; // { at, stats }
+
+/**
+ * Zero-open-ticket stats derived purely from case timestamps: a case is open
+ * from CreatedDate until End_Time_of_Incident__c, so the spans where nothing
+ * is open can be reconstructed exactly without recording anything. Uses the
+ * same incident filter as the trend/history queries. Also pulls cases created
+ * before the 7-day window that were still open inside it, so the start of the
+ * window isn't falsely green.
+ */
+export async function getGreenStats() {
+  const now = Date.now();
+  if (greenStatsCache && now - greenStatsCache.at < GREEN_CACHE_TTL_MS) return greenStatsCache.stats;
+
+  const bucketMap = await getProductLineBucketMap();
+  const windowStart = new Date(now - GREEN_LOOKBACK_MS).toISOString().replace(/\.\d{3}/, '');
+
+  const soql =
+    'SELECT Product_Type__c, CreatedDate, End_Time_of_Incident__c FROM Case ' +
+    "WHERE Type = 'Incident' " +
+    "AND Highest_Severity__c IN ('Severity 1','Severity 2') " +
+    'AND Impact_Percentage__c >= 50 ' +
+    `AND (CreatedDate >= ${windowStart} OR End_Time_of_Incident__c = null OR End_Time_of_Incident__c >= ${windowStart})`;
+
+  const records = [];
+  let nextPath = `/services/data/${SF_API_VERSION}/query?q=${encodeURIComponent(soql)}`;
+  while (nextPath) {
+    const result = await sfFetch(nextPath);
+    records.push(...(result.records || []));
+    nextPath = result.done ? null : (result.nextRecordsUrl || null);
+  }
+
+  // Sweep +1 at open / -1 at close; +1 sorts after -1 on ties so a hand-off
+  // at the same instant doesn't register as a zero-length green span.
+  const events = [];
+  for (const r of records) {
+    if (!classifyProductType(r.Product_Type__c, bucketMap)) continue;
+    const start = new Date(r.CreatedDate).getTime();
+    events.push({ t: start, d: 1 });
+    if (r.End_Time_of_Incident__c) {
+      events.push({ t: Math.max(start, new Date(r.End_Time_of_Incident__c).getTime()), d: -1 });
+    }
+  }
+  events.sort((a, b) => a.t - b.t || a.d - b.d);
+
+  const greenSpans = [];
+  let open = 0;
+  let greenSince = events.length ? events[0].t : now - GREEN_LOOKBACK_MS;
+  for (const e of events) {
+    if (open === 0 && e.t > greenSince) greenSpans.push([greenSince, e.t]);
+    open += e.d;
+    if (open === 0) greenSince = e.t;
+  }
+  const isGreen = open === 0;
+  if (isGreen) greenSpans.push([greenSince, now]);
+
+  const greenMsSince = (from) =>
+    greenSpans.reduce((sum, [s, e]) => sum + Math.max(0, Math.min(e, now) - Math.max(s, from)), 0);
+
+  const stats = {
+    isGreen,
+    currentStreakMinutes: isGreen ? Math.floor((now - greenSince) / 60000) : 0,
+    last12hMinutes: Math.floor(greenMsSince(now - 12 * 3600 * 1000) / 60000),
+    last7dMinutes: Math.floor(greenMsSince(now - GREEN_LOOKBACK_MS) / 60000),
+  };
+
+  greenStatsCache = { at: now, stats };
+  console.log(`[salesforce] getGreenStats: ${records.length} case(s), green=${isGreen}`);
+  return stats;
+}

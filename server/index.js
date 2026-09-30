@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import express from 'express';
 import {
-  getCaseListView, getTicketHistory, getTrendData, getTrendDayDetail,
+  getCaseListView, getGreenStats, getTicketHistory, getTrendData, getTrendDayDetail,
   getTicketInflowHealth, getTicketBacklogHealth,
   getTicketResolutionHealth, getTicketResolutionHealthSev3,
 } from './salesforce.js';
@@ -208,7 +208,10 @@ app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.get('/api/dashboard', async (req, res) => {
   try {
-    const cases = await getCaseListView(process.env.SF_CASE_LISTVIEW);
+    const [cases, greenStats] = await Promise.all([
+      getCaseListView(process.env.SF_CASE_LISTVIEW),
+      getGreenStats(),
+    ]);
     res.json({
       asOf: new Date().toISOString(),
       reportUrls: {
@@ -217,6 +220,7 @@ app.get('/api/dashboard', async (req, res) => {
         gstore: `${process.env.SF_INSTANCE_URL}/${process.env.SF_REPORT_GSTORE}`,
       },
       cases,
+      greenStats,
     });
   } catch (err) {
     console.error(err);

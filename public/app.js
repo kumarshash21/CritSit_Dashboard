@@ -226,6 +226,33 @@ function countByService(rows) {
   return counts;
 }
 
+// ---------- Zero-ticket time tracker ----------
+
+const greenTrackerDot = document.getElementById('greenTrackerDot');
+const greenStreakValue = document.getElementById('greenStreakValue');
+const green12hValue = document.getElementById('green12hValue');
+const green7dValue = document.getElementById('green7dValue');
+
+function formatGreenDuration(totalMinutes) {
+  const m = Math.max(0, Math.round(totalMinutes || 0));
+  const days = Math.floor(m / 1440);
+  const hours = Math.floor((m % 1440) / 60);
+  const minutes = m % 60;
+  const parts = [];
+  if (days) parts.push(`${days}d`);
+  if (days || hours) parts.push(`${hours}h`);
+  parts.push(`${minutes}m`);
+  return parts.join(' ');
+}
+
+function updateGreenTracker(stats) {
+  if (!stats) return;
+  if (greenTrackerDot) greenTrackerDot.classList.toggle('is-green', !!stats.isGreen);
+  if (greenStreakValue) greenStreakValue.textContent = formatGreenDuration(stats.currentStreakMinutes);
+  if (green12hValue) green12hValue.textContent = formatGreenDuration(stats.last12hMinutes);
+  if (green7dValue) green7dValue.textContent = formatGreenDuration(stats.last7dMinutes);
+}
+
 function setReportLink(el, url) {
   if (!url) return;
   el.href = url;
@@ -381,6 +408,7 @@ async function loadDashboard() {
     setReportLink(cardEls.gstore.report, data.reportUrls?.gstore);
 
     renderCases(data.cases);
+    updateGreenTracker(data.greenStats);
 
     lastCheckedAt = new Date();
     const checkedAt = formatTime(lastCheckedAt, getSelectedTimezone());
