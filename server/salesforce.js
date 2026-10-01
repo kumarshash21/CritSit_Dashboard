@@ -1007,7 +1007,7 @@ export async function getGreenStats() {
 
   const greenSpans = [];
   let open = 0;
-  let greenSince = events.length ? events[0].t : now - GREEN_LOOKBACK_MS;
+  let greenSince = now - GREEN_LOOKBACK_MS;
   for (const e of events) {
     if (open === 0 && e.t > greenSince) greenSpans.push([greenSince, e.t]);
     open += e.d;

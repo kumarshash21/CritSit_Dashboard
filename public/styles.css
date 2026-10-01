@@ -4482,6 +4482,13 @@ td.col-mono {
   color: var(--text-primary);
 }
 
+.green-tracker-note {
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+
 @media (max-width: 560px) {
   .green-tracker {
     width: 100%;
